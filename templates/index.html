@@ -1,0 +1,54 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="text-center py-16">
+    <div class="text-8xl mb-6">🏃</div>
+    <h1 class="text-5xl font-bold text-gray-800 mb-4">RunMate</h1>
+    <p class="text-xl text-gray-500 mb-10">한국 마라톤 일정 조회 · 참가 신청 · 러닝 기록 관리</p>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-10" id="summary-cards">
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <div class="text-3xl font-bold text-orange-500" id="total-marathons">-</div>
+            <div class="text-sm text-gray-500 mt-1">등록된 마라톤</div>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <div class="text-3xl font-bold text-blue-500" id="my-registrations">-</div>
+            <div class="text-sm text-gray-500 mt-1">내 참가 신청</div>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <div class="text-3xl font-bold text-green-500" id="total-runs">-</div>
+            <div class="text-sm text-gray-500 mt-1">총 러닝 횟수</div>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <div class="text-3xl font-bold text-purple-500" id="total-distance">-</div>
+            <div class="text-sm text-gray-500 mt-1">총 거리 (km)</div>
+        </div>
+    </div>
+    <div class="flex gap-4 justify-center">
+        <a href="/marathons" class="bg-orange-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors">
+            마라톤 일정 보기
+        </a>
+        <a href="/records" class="bg-white text-gray-700 px-8 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-colors">
+            기록 & 통계
+        </a>
+    </div>
+</div>
+
+<script>
+async function loadSummary() {
+    const [marathonsRes, regsRes, recordsRes] = await Promise.all([
+        fetch('/api/marathons'),
+        fetch('/api/registrations'),
+        fetch('/api/records')
+    ]);
+    const marathons = await marathonsRes.json();
+    const regs = await regsRes.json();
+    const records = await recordsRes.json();
+
+    document.getElementById('total-marathons').textContent = marathons.data?.length || 0;
+    document.getElementById('my-registrations').textContent = (regs.data || []).filter(r => r.status === 'registered').length;
+    document.getElementById('total-runs').textContent = records.data?.length || 0;
+    const totalDist = (records.data || []).reduce((sum, r) => sum + r.distance, 0);
+    document.getElementById('total-distance').textContent = totalDist.toFixed(1);
+}
+loadSummary();
+</script>
+{{end}}

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RunMate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .card-hover { transition: transform 0.15s, box-shadow 0.15s; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
+        /* 모바일 safe area */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- 데스크톱 네비게이션 -->
+    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
+        <div class="max-w-5xl mx-auto px-4">
+            <div class="flex items-center justify-between h-14">
+                <a href="/" class="flex items-center gap-2 text-orange-500 font-bold text-lg shrink-0">
+                    <i class="fas fa-running"></i> RunMate
+                </a>
+                <!-- 데스크톱 메뉴 -->
+                <div class="hidden sm:flex gap-1">
+                    <a href="/marathons" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
+                        <i class="fas fa-flag-checkered mr-1"></i>마라톤
+                    </a>
+                    <a href="/registrations" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
+                        <i class="fas fa-ticket mr-1"></i>내 신청
+                    </a>
+                    <a href="/records" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
+                        <i class="fas fa-chart-line mr-1"></i>기록&통계
+                    </a>
+                </div>
+                <!-- 모바일 햄버거 -->
+                <button id="mobile-menu-btn" class="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100">
+                    <i class="fas fa-bars text-lg"></i>
+                </button>
+            </div>
+        </div>
+        <!-- 모바일 드롭다운 -->
+        <div id="mobile-menu" class="hidden sm:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
+            <a href="/marathons" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
+                <i class="fas fa-flag-checkered w-4 text-center"></i>마라톤 일정
+            </a>
+            <a href="/registrations" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
+                <i class="fas fa-ticket w-4 text-center"></i>내 신청 목록
+            </a>
+            <a href="/records" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
+                <i class="fas fa-chart-line w-4 text-center"></i>기록 & 통계
+            </a>
+        </div>
+    </nav>
+
+    <main class="max-w-5xl mx-auto px-4 py-6 pb-20 sm:pb-8">
+        {{template "content" .}}
+    </main>
+
+    <!-- 모바일 하단 탭바 -->
+    <div class="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe z-40">
+        <div class="flex">
+            <a href="/marathons" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
+                <i class="fas fa-flag-checkered text-lg mb-0.5"></i>
+                <span class="text-[10px] font-medium">마라톤</span>
+            </a>
+            <a href="/registrations" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
+                <i class="fas fa-ticket text-lg mb-0.5"></i>
+                <span class="text-[10px] font-medium">내 신청</span>
+            </a>
+            <a href="/records" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
+                <i class="fas fa-chart-line text-lg mb-0.5"></i>
+                <span class="text-[10px] font-medium">기록</span>
+            </a>
+            <a href="/" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
+                <i class="fas fa-home text-lg mb-0.5"></i>
+                <span class="text-[10px] font-medium">홈</span>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // 햄버거 토글
+        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        });
+
+        // 현재 페이지 네비게이션 활성화
+        const path = window.location.pathname;
+        document.querySelectorAll('.nav-item').forEach(link => {
+            if (link.getAttribute('href') === path) {
+                link.classList.add('bg-orange-100', 'text-orange-600');
+                link.classList.remove('text-gray-600');
+            }
+        });
+        document.querySelectorAll('.bottom-nav').forEach(link => {
+            if (link.getAttribute('href') === path) {
+                link.classList.add('text-orange-500');
+                link.classList.remove('text-gray-400');
+            }
+        });
+    </script>
+</body>
+</html>

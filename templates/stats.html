@@ -1,0 +1,188 @@
+{{template "layout.html" .}}
+{{define "content"}}
+<div class="mb-6 flex items-center justify-between flex-wrap gap-3">
+    <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-chart-line text-orange-500 mr-2"></i>러닝 통계</h1>
+    <div class="flex gap-2">
+        <button onclick="setTab('weekly')" id="tab-weekly" class="tab-btn bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors">주간</button>
+        <button onclick="setTab('monthly')" id="tab-monthly" class="tab-btn bg-white text-gray-600 border border-gray-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-gray-50">월간</button>
+        <button onclick="setTab('yearly')" id="tab-yearly" class="tab-btn bg-white text-gray-600 border border-gray-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-gray-50">연간</button>
+    </div>
+</div>
+
+<!-- 주간 -->
+<div id="section-weekly">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">최근 8주 거리 추이</h2>
+        <canvas id="weekly-chart" height="80"></canvas>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <thead class="bg-gray-50 text-sm text-gray-600">
+                <tr>
+                    <th class="text-left px-5 py-3">기간</th>
+                    <th class="text-right px-5 py-3">거리 (km)</th>
+                    <th class="text-right px-5 py-3">시간</th>
+                    <th class="text-right px-5 py-3">횟수</th>
+                    <th class="text-right px-5 py-3">평균 페이스</th>
+                </tr>
+            </thead>
+            <tbody id="weekly-table" class="divide-y divide-gray-50 text-sm"></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 월간 -->
+<div id="section-monthly" class="hidden">
+    <div class="flex items-center gap-3 mb-4">
+        <select id="year-select" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+        </select>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">월별 거리</h2>
+        <canvas id="monthly-chart" height="80"></canvas>
+    </div>
+    <div class="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3" id="monthly-cards"></div>
+</div>
+
+<!-- 연간 -->
+<div id="section-yearly" class="hidden">
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <h2 class="text-lg font-semibold text-gray-700 mb-4">연간 비교</h2>
+        <canvas id="yearly-chart" height="80"></canvas>
+    </div>
+    <div class="grid md:grid-cols-3 gap-4" id="yearly-cards"></div>
+</div>
+
+<script>
+let charts = {};
+
+function setTab(tab) {
+    ['weekly','monthly','yearly'].forEach(t => {
+        document.getElementById('section-'+t).classList.add('hidden');
+        const btn = document.getElementById('tab-'+t);
+        btn.className = 'tab-btn bg-white text-gray-600 border border-gray-200 px-4 py-2 rounded-lg text-sm font-semibold transition-colors hover:bg-gray-50';
+    });
+    document.getElementById('section-'+tab).classList.remove('hidden');
+    const activeBtn = document.getElementById('tab-'+tab);
+    activeBtn.className = 'tab-btn bg-orange-500 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors';
+}
+
+function destroyChart(id) {
+    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+async function loadWeekly() {
+    const res = await fetch('/api/stats?period=weekly');
+    const { data } = await res.json();
+    if (!data) return;
+
+    destroyChart('weekly');
+    charts.weekly = new Chart(document.getElementById('weekly-chart'), {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.week),
+            datasets: [{
+                label: '거리 (km)',
+                data: data.map(d => d.total_distance),
+                backgroundColor: 'rgba(249, 115, 22, 0.7)',
+                borderRadius: 6,
+            }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    document.getElementById('weekly-table').innerHTML = data.map(w => `
+    <tr class="hover:bg-gray-50">
+        <td class="px-5 py-3 font-medium">${w.week}</td>
+        <td class="px-5 py-3 text-right font-bold text-orange-500">${w.total_distance.toFixed(1)}</td>
+        <td class="px-5 py-3 text-right">${w.total_duration_formatted}</td>
+        <td class="px-5 py-3 text-right">${w.run_count}회</td>
+        <td class="px-5 py-3 text-right">${w.avg_pace || '-'}</td>
+    </tr>`).join('');
+}
+
+async function loadMonthly() {
+    const year = document.getElementById('year-select').value || new Date().getFullYear();
+    const res = await fetch(`/api/stats?period=monthly&year=${year}`);
+    const { data } = await res.json();
+    if (!data) return;
+
+    destroyChart('monthly');
+    charts.monthly = new Chart(document.getElementById('monthly-chart'), {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.month),
+            datasets: [{
+                label: '거리 (km)',
+                data: data.map(d => d.total_distance),
+                backgroundColor: data.map(d => d.total_distance > 0 ? 'rgba(249, 115, 22, 0.7)' : 'rgba(229, 231, 235, 0.5)'),
+                borderRadius: 6,
+            }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    document.getElementById('monthly-cards').innerHTML = data.map(m => `
+    <div class="bg-white rounded-xl shadow-sm border ${m.total_distance > 0 ? 'border-orange-100' : 'border-gray-100'} p-4 text-center">
+        <div class="text-sm font-medium text-gray-500 mb-2">${m.month}</div>
+        <div class="text-2xl font-bold ${m.total_distance > 0 ? 'text-orange-500' : 'text-gray-300'}">${m.total_distance.toFixed(0)}<span class="text-sm font-normal">km</span></div>
+        <div class="text-xs text-gray-400 mt-1">${m.run_count}회</div>
+    </div>`).join('');
+}
+
+async function loadYearly() {
+    const res = await fetch('/api/stats?period=yearly');
+    const { data } = await res.json();
+    if (!data) return;
+
+    destroyChart('yearly');
+    charts.yearly = new Chart(document.getElementById('yearly-chart'), {
+        type: 'bar',
+        data: {
+            labels: data.map(d => d.year),
+            datasets: [{
+                label: '거리 (km)',
+                data: data.map(d => d.total_distance),
+                backgroundColor: ['rgba(249, 115, 22, 0.5)', 'rgba(249, 115, 22, 0.7)', 'rgba(249, 115, 22, 0.9)'],
+                borderRadius: 8,
+            }]
+        },
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+
+    document.getElementById('yearly-cards').innerHTML = data.map(y => `
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <h3 class="text-lg font-bold text-gray-700 mb-4">${y.year}</h3>
+        <div class="grid grid-cols-2 gap-3">
+            <div class="bg-orange-50 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-orange-500">${y.total_distance.toFixed(0)}</div>
+                <div class="text-xs text-gray-500">km</div>
+            </div>
+            <div class="bg-blue-50 rounded-lg p-3 text-center">
+                <div class="text-2xl font-bold text-blue-500">${y.run_count}</div>
+                <div class="text-xs text-gray-500">회</div>
+            </div>
+            <div class="bg-green-50 rounded-lg p-3 text-center col-span-2">
+                <div class="text-xl font-bold text-green-500">${y.total_duration_formatted}</div>
+                <div class="text-xs text-gray-500">총 러닝 시간</div>
+            </div>
+        </div>
+    </div>`).join('');
+}
+
+// 연도 선택 초기화
+const currentYear = new Date().getFullYear();
+const yearSelect = document.getElementById('year-select');
+for (let y = currentYear; y >= currentYear - 3; y--) {
+    const opt = document.createElement('option');
+    opt.value = y; opt.textContent = y + '년';
+    if (y === currentYear) opt.selected = true;
+    yearSelect.appendChild(opt);
+}
+yearSelect.addEventListener('change', loadMonthly);
+
+loadWeekly();
+loadMonthly();
+loadYearly();
+</script>
+{{end}}
