@@ -7,6 +7,7 @@ import (
 	"os"
 	"runmate/handlers"
 	"runmate/repository"
+	"runmate/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -18,6 +19,15 @@ func main() {
 	}
 
 	repository.InitDB()
+
+	go func() {
+		result, err := services.CrawlAndSyncMarathons()
+		if err != nil {
+			log.Printf("자동 크롤링 실패: %v", err)
+		} else {
+			log.Printf("자동 크롤링 완료: %s", result.Message)
+		}
+	}()
 
 	r := gin.Default()
 
@@ -62,8 +72,10 @@ func main() {
 	{
 		// 마라톤
 		api.GET("/marathons", handlers.GetMarathons)
+		api.GET("/marathons/cities", handlers.GetCities)
 		api.GET("/marathons/:id", handlers.GetMarathon)
 		api.POST("/marathons/sync", handlers.SyncMarathons)
+		api.POST("/marathons/crawl", handlers.CrawlMarathons)
 
 		// 참가 신청
 		api.GET("/registrations", handlers.GetRegistrations)

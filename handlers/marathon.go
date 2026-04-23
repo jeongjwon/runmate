@@ -19,9 +19,23 @@ func GetMarathons(c *gin.Context) {
 	if category := c.Query("category"); category != "" {
 		query = query.Where("categories LIKE ?", "%"+category+"%")
 	}
+	if search := c.Query("search"); search != "" {
+		like := "%" + search + "%"
+		query = query.Where("name LIKE ? OR location LIKE ?", like, like)
+	}
 
 	query.Find(&marathons)
 	c.JSON(http.StatusOK, gin.H{"data": marathons})
+}
+
+func GetCities(c *gin.Context) {
+	var cities []string
+	repository.DB.Model(&models.Marathon{}).
+		Where("city != ''").
+		Distinct("city").
+		Order("city ASC").
+		Pluck("city", &cities)
+	c.JSON(http.StatusOK, gin.H{"data": cities})
 }
 
 func GetMarathon(c *gin.Context) {
@@ -39,6 +53,18 @@ func SyncMarathons(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": err.Error(),
 			"hint": "data.go.kr에서 '국내마라톤대회 정보' 데이터셋 활용신청 후 MARATHON_API_KEY 환경변수를 설정하세요.",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"data": result})
+}
+
+func CrawlMarathons(c *gin.Context) {
+	result, err := services.CrawlAndSyncMarathons()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": err.Error(),
+			"hint": ".env에 ANTHROPIC_API_KEY를 설정하세요. Anthropic Console(console.anthropic.com)에서 발급할 수 있습니다.",
 		})
 		return
 	}

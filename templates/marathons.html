@@ -1,14 +1,21 @@
 {{template "layout.html" .}}
 {{define "content"}}
-<div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-    <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-flag-checkered text-orange-500 mr-2"></i>마라톤 일정</h1>
-    <div class="flex gap-2 flex-wrap">
+<div class="mb-6 flex flex-col gap-4">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-flag-checkered text-orange-500 mr-2"></i>마라톤 일정</h1>
+        <div id="crawl-status" class="hidden text-sm text-orange-500 flex items-center gap-1">
+            <i class="fas fa-sync-alt fa-spin"></i> 최신 일정 불러오는 중...
+        </div>
+    </div>
+    <!-- 검색 + 필터 -->
+    <div class="flex flex-col md:flex-row gap-2">
+        <div class="relative flex-1">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+            <input id="search-input" type="text" placeholder="대회명 또는 장소 검색"
+                class="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+        </div>
         <select id="filter-city" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
             <option value="">전체 지역</option>
-            <option value="서울">서울</option>
-            <option value="경주">경주</option>
-            <option value="춘천">춘천</option>
-            <option value="대구">대구</option>
         </select>
         <select id="filter-category" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
             <option value="">전체 종목</option>
@@ -18,6 +25,8 @@
             <option value="Full">풀코스</option>
         </select>
     </div>
+    <!-- 결과 수 -->
+    <p id="result-count" class="text-sm text-gray-400"></p>
 </div>
 
 <div id="marathon-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
@@ -56,18 +65,33 @@
 
 <script>
 let selectedMarathonId = null;
+let searchTimer = null;
 
 const categoryLabels = { '5K': '5K', '10K': '10K', 'Half': '하프 (21.1km)', 'Full': '풀코스 (42.195km)' };
+
+async function loadCities() {
+    const res = await fetch('/api/marathons/cities');
+    const { data } = await res.json();
+    const select = document.getElementById('filter-city');
+    (data || []).forEach(city => {
+        const opt = document.createElement('option');
+        opt.value = city;
+        opt.textContent = city;
+        select.appendChild(opt);
+    });
+}
 
 async function loadMarathons() {
     const city = document.getElementById('filter-city').value;
     const category = document.getElementById('filter-category').value;
-    let url = '/api/marathons';
+    const search = document.getElementById('search-input').value.trim();
+
     const params = new URLSearchParams();
     if (city) params.set('city', city);
     if (category) params.set('category', category);
-    if (params.toString()) url += '?' + params.toString();
+    if (search) params.set('search', search);
 
+    const url = '/api/marathons' + (params.toString() ? '?' + params.toString() : '');
     const res = await fetch(url);
     const { data } = await res.json();
     renderMarathons(data || []);
@@ -75,40 +99,45 @@ async function loadMarathons() {
 
 function renderMarathons(marathons) {
     const container = document.getElementById('marathon-list');
+    const countEl = document.getElementById('result-count');
+    countEl.textContent = `총 ${marathons.length}개 대회`;
+
     if (!marathons.length) {
         container.innerHTML = '<p class="text-gray-400 col-span-3 text-center py-12">조건에 맞는 마라톤이 없습니다.</p>';
         return;
     }
+    const today = new Date().toISOString().split('T')[0];
     container.innerHTML = marathons.map(m => {
-        const categories = m.categories.split(',');
-        const today = new Date().toISOString().split('T')[0];
+        const categories = m.categories ? m.categories.split(',') : [];
         const isPast = m.date < today;
+        const fee = m.entry_fee > 0 ? m.entry_fee.toLocaleString() + '원' : '미정';
+        const officialLink = m.official_url
+            ? `<a href="${m.official_url}" target="_blank" class="flex-1 border border-gray-200 rounded-lg py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors"><i class="fas fa-external-link-alt mr-1"></i>공식 홈페이지</a>`
+            : `<span class="flex-1 border border-gray-100 rounded-lg py-2 text-center text-sm text-gray-300">홈페이지 없음</span>`;
         return `
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 card-hover overflow-hidden">
             <div class="bg-gradient-to-r from-orange-400 to-rose-400 px-5 py-4">
                 <div class="flex justify-between items-start">
-                    <span class="bg-white bg-opacity-20 text-white text-xs px-2 py-1 rounded-full">${m.city}</span>
-                    ${isPast ? '<span class="bg-gray-700 bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">종료</span>' : '<span class="bg-green-400 bg-opacity-80 text-white text-xs px-2 py-1 rounded-full">모집중</span>'}
+                    <span class="bg-white bg-opacity-20 text-white text-xs px-2 py-1 rounded-full">${m.city || '지역 미상'}</span>
+                    ${isPast
+                        ? '<span class="bg-gray-700 bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">종료</span>'
+                        : '<span class="bg-green-400 bg-opacity-80 text-white text-xs px-2 py-1 rounded-full">모집중</span>'}
                 </div>
                 <h3 class="text-white font-bold text-lg mt-2 leading-tight">${m.name}</h3>
             </div>
             <div class="p-5">
                 <div class="space-y-2 text-sm text-gray-600 mb-4">
                     <div class="flex items-center gap-2"><i class="fas fa-calendar text-orange-400 w-4"></i>${m.date}</div>
-                    <div class="flex items-center gap-2"><i class="fas fa-map-marker-alt text-orange-400 w-4"></i>${m.location}</div>
-                    <div class="flex items-center gap-2"><i class="fas fa-won-sign text-orange-400 w-4"></i>${m.entry_fee.toLocaleString()}원</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-map-marker-alt text-orange-400 w-4"></i>${m.location || '장소 미정'}</div>
+                    <div class="flex items-center gap-2"><i class="fas fa-won-sign text-orange-400 w-4"></i>${fee}</div>
                 </div>
                 <div class="flex gap-1 flex-wrap mb-4">
                     ${categories.map(cat => `<span class="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">${cat}</span>`).join('')}
                 </div>
-                <p class="text-xs text-gray-400 mb-4 line-clamp-2">${m.description}</p>
+                ${m.description ? `<p class="text-xs text-gray-400 mb-4 line-clamp-2">${m.description}</p>` : ''}
                 <div class="flex gap-2">
-                    <a href="${m.official_url}" target="_blank" class="flex-1 border border-gray-200 rounded-lg py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                        <i class="fas fa-external-link-alt mr-1"></i>공식 홈페이지
-                    </a>
-                    ${!isPast ? `<button onclick="openModal(${m.id}, '${m.name}', '${m.categories}')" class="flex-1 bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition-colors">
-                        참가 신청
-                    </button>` : ''}
+                    ${officialLink}
+                    ${!isPast ? `<button onclick="openModal(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.categories}')" class="flex-1 bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition-colors">참가 신청</button>` : ''}
                 </div>
             </div>
         </div>`;
@@ -119,7 +148,7 @@ function openModal(id, name, categories) {
     selectedMarathonId = id;
     document.getElementById('modal-marathon-name').textContent = name;
     const select = document.getElementById('reg-category');
-    select.innerHTML = categories.split(',').map(cat =>
+    select.innerHTML = (categories || '').split(',').map(cat =>
         `<option value="${cat}">${categoryLabels[cat] || cat}</option>`
     ).join('');
     document.getElementById('modal').classList.remove('hidden');
@@ -155,10 +184,14 @@ async function submitRegistration() {
 
 document.getElementById('filter-city').addEventListener('change', loadMarathons);
 document.getElementById('filter-category').addEventListener('change', loadMarathons);
+document.getElementById('search-input').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadMarathons, 300);
+});
 document.getElementById('modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
 
-loadMarathons();
+loadCities().then(() => loadMarathons());
 </script>
 {{end}}
