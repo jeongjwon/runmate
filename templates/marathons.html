@@ -66,34 +66,60 @@ async function loadParticipations() {
     (data || []).forEach(p => { participationMap[p.marathon_id] = true; });
 }
 
-async function toggleParticipation(marathonId, event) {
+function toggleParticipation(marathonId, event) {
     event.stopPropagation();
     if (!IS_LOGGED_IN) { location.href = '/login'; return; }
     if (pendingSet.has(marathonId)) return;
 
+    if (!!participationMap[marathonId]) {
+        showConfirmModal(
+            '내 마라톤에서 제거',
+            '이 마라톤을 내 목록에서 제거할까요?',
+            () => doRemove(marathonId)
+        );
+    } else {
+        doAdd(marathonId);
+    }
+}
+
+async function doAdd(marathonId) {
+    if (pendingSet.has(marathonId)) return;
     pendingSet.add(marathonId);
-    const isActive = !!participationMap[marathonId];
-
-    // 낙관적 UI 업데이트
-    if (isActive) delete participationMap[marathonId];
-    else          participationMap[marathonId] = true;
+    participationMap[marathonId] = true;
     updateParticipationBtn(marathonId);
-
     try {
-        const res = await fetch(`/api/participations/${marathonId}`, {
-            method: isActive ? 'DELETE' : 'POST',
-            credentials: 'same-origin',
-        });
-        if (!res.ok) {
-            // 실패 시 롤백
-            if (isActive) participationMap[marathonId] = true;
-            else delete participationMap[marathonId];
+        const res = await fetch(`/api/participations/${marathonId}`, { method: 'POST', credentials: 'same-origin' });
+        if (res.ok) {
+            showSnackbar('내 마라톤에 추가되었습니다 ⭐');
+        } else {
+            delete participationMap[marathonId];
             updateParticipationBtn(marathonId);
+            showSnackbar('추가에 실패했습니다', 'error');
         }
     } finally {
         pendingSet.delete(marathonId);
     }
+    const fp = document.getElementById('filter-participation');
+    if (fp && fp.value) renderMarathons(lastMarathons);
+}
 
+async function doRemove(marathonId) {
+    if (pendingSet.has(marathonId)) return;
+    pendingSet.add(marathonId);
+    delete participationMap[marathonId];
+    updateParticipationBtn(marathonId);
+    try {
+        const res = await fetch(`/api/participations/${marathonId}`, { method: 'DELETE', credentials: 'same-origin' });
+        if (res.ok) {
+            showSnackbar('내 마라톤에서 제거되었습니다');
+        } else {
+            participationMap[marathonId] = true;
+            updateParticipationBtn(marathonId);
+            showSnackbar('제거에 실패했습니다', 'error');
+        }
+    } finally {
+        pendingSet.delete(marathonId);
+    }
     const fp = document.getElementById('filter-participation');
     if (fp && fp.value) renderMarathons(lastMarathons);
 }

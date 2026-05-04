@@ -106,7 +106,7 @@ function renderParticipations(participations) {
                         class="btn-mint text-xs px-3 py-1.5 rounded-lg whitespace-nowrap justify-center">
                         <i class="fas fa-pen"></i>기록 ${p.category || p.finish_time ? '수정' : '입력'}
                     </button>
-                    <button onclick="removeParticipation(${p.marathon_id})"
+                    <button onclick="removeParticipation(${p.marathon_id}, '${(m.name||'').replace(/'/g,"\\'")}')"
                         class="btn-outline text-xs px-3 py-1.5 rounded-lg w-full text-center">
                         목록에서 제거
                     </button>
@@ -116,13 +116,23 @@ function renderParticipations(participations) {
     }).join('');
 }
 
-async function removeParticipation(marathonId) {
-    if (!confirm('내 마라톤 목록에서 제거하시겠습니까?')) return;
-    await fetch(`/api/participations/${marathonId}`, {
-        method: 'DELETE',
-        credentials: 'same-origin',
-    });
-    loadParticipations();
+function removeParticipation(marathonId, name) {
+    showConfirmModal(
+        '내 마라톤에서 제거',
+        `'${name}'을(를) 목록에서 제거할까요?`,
+        async () => {
+            const res = await fetch(`/api/participations/${marathonId}`, {
+                method: 'DELETE',
+                credentials: 'same-origin',
+            });
+            if (res.ok) {
+                showSnackbar('내 마라톤에서 제거되었습니다');
+                loadParticipations();
+            } else {
+                showSnackbar('제거에 실패했습니다', 'error');
+            }
+        }
+    );
 }
 
 function openRecordModal(marathonId, name, categories) {
@@ -155,8 +165,8 @@ async function saveRecord() {
         body: JSON.stringify({ category, finish_time: finishTime, race_notes: notes })
     });
     const data = await res.json();
-    if (res.ok) { closeRecordModal(); loadParticipations(); }
-    else        { alert(data.error); }
+    if (res.ok) { closeRecordModal(); loadParticipations(); showSnackbar('기록이 저장되었습니다'); }
+    else        { showSnackbar(data.error || '저장에 실패했습니다', 'error'); }
 }
 
 document.getElementById('record-modal').addEventListener('click', function(e) {

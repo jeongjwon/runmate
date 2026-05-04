@@ -403,6 +403,31 @@
       {{template "content" .}}
     </main>
 
+    <!-- 스낵바 -->
+    <div id="snackbar" style="position:fixed;bottom:5.5rem;left:50%;transform:translateX(-50%) translateY(8px);opacity:0;z-index:70;pointer-events:none;transition:opacity .3s,transform .3s;white-space:nowrap;">
+      <div id="snackbar-inner" class="flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-lg text-sm font-semibold text-white">
+        <i id="snackbar-icon" class="fas fa-check-circle"></i>
+        <span id="snackbar-msg"></span>
+      </div>
+    </div>
+
+    <!-- 확인 모달 (전역) -->
+    <div id="confirm-modal" class="fixed inset-0 modal-overlay hidden z-50 flex items-end sm:items-center justify-center p-4">
+      <div class="modal-box w-full max-w-sm rounded-2xl shadow-2xl p-6">
+        <div class="text-center mb-5">
+          <div class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style="background-color:rgba(239,68,68,.1);">
+            <i class="fas fa-trash text-lg" style="color:#ef4444;"></i>
+          </div>
+          <h3 id="confirm-title" class="font-bold text-base mb-1" style="color:var(--navy);"></h3>
+          <p id="confirm-message" class="text-sm" style="color:var(--text2);"></p>
+        </div>
+        <div class="flex gap-3">
+          <button onclick="closeConfirmModal()" class="btn-outline flex-1 py-2.5 text-sm font-bold">취소</button>
+          <button id="confirm-ok-btn" class="flex-1 py-2.5 text-sm font-bold rounded-xl text-white" style="background-color:#ef4444;">제거</button>
+        </div>
+      </div>
+    </div>
+
     <!-- 모바일 하단 탭바 -->
     <div
       class="sm:hidden fixed bottom-0 left-0 right-0 border-t pb-safe z-40"
@@ -464,6 +489,47 @@
           link.classList.add("bottom-nav-active");
           link.style.color = "";
         }
+      });
+
+      // ── 스낵바 ──────────────────────────────────────────────────
+      let _snackTimer = null;
+      function showSnackbar(msg, type) {
+        const el    = document.getElementById('snackbar');
+        const inner = document.getElementById('snackbar-inner');
+        const icon  = document.getElementById('snackbar-icon');
+        document.getElementById('snackbar-msg').textContent = msg;
+        const bg    = { success:'#4ecba0', error:'#ef4444', info:'#1b2d40' };
+        const ic    = { success:'fa-check-circle', error:'fa-exclamation-circle', info:'fa-info-circle' };
+        inner.style.backgroundColor = bg[type] || bg.success;
+        icon.className = 'fas ' + (ic[type] || ic.success);
+        el.style.opacity = '1';
+        el.style.transform = 'translateX(-50%) translateY(0)';
+        clearTimeout(_snackTimer);
+        _snackTimer = setTimeout(() => {
+          el.style.opacity = '0';
+          el.style.transform = 'translateX(-50%) translateY(8px)';
+        }, 2500);
+      }
+
+      // ── 확인 모달 ────────────────────────────────────────────────
+      let _confirmCb = null;
+      function showConfirmModal(title, message, onConfirm) {
+        document.getElementById('confirm-title').textContent   = title;
+        document.getElementById('confirm-message').textContent = message;
+        _confirmCb = onConfirm;
+        document.getElementById('confirm-modal').classList.remove('hidden');
+      }
+      function closeConfirmModal() {
+        document.getElementById('confirm-modal').classList.add('hidden');
+        _confirmCb = null;
+      }
+      document.getElementById('confirm-ok-btn').addEventListener('click', function() {
+        const cb = _confirmCb;
+        closeConfirmModal();
+        if (cb) cb();
+      });
+      document.getElementById('confirm-modal').addEventListener('click', function(e) {
+        if (e.target === this) closeConfirmModal();
       });
 
       function toggleUserMenu() {

@@ -10,6 +10,7 @@ import (
 	"runmate/models"
 	"runmate/repository"
 	"runmate/services"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -20,6 +21,24 @@ func migrateWishToParticipation() {
 	if migrator.HasTable("marathon_wishes") && !migrator.HasTable("marathon_participations") {
 		repository.DB.Exec("ALTER TABLE marathon_wishes RENAME TO marathon_participations")
 	}
+}
+
+func migrateDropStatusColumn() {
+	// 테이블의 실제 CREATE SQL을 확인해 스키마 불일치 여부를 판단
+	// - status 컬럼이 있거나 FK 제약이 없으면 GORM AutoMigrate가 SQLite 버그로 실패함
+	// → 테이블을 드랍해서 AutoMigrate가 올바른 스키마로 재생성하도록 위임
+	var createSQL string
+	repository.DB.Raw("SELECT sql FROM sqlite_master WHERE type='table' AND name='marathon_participations'").Scan(&createSQL)
+	if createSQL == "" {
+		return // 테이블 없음 → AutoMigrate가 새로 생성
+	}
+	needsRebuild := strings.Contains(createSQL, "status") || !strings.Contains(createSQL, "FOREIGN KEY")
+	if !needsRebuild {
+		return
+	}
+	repository.DB.Exec("DROP TABLE IF EXISTS marathon_participations_new")
+	repository.DB.Exec("DROP TABLE IF EXISTS marathon_participations")
+	log.Println("DB 마이그레이션: marathon_participations 초기화 (AutoMigrate가 재생성)")
 }
 
 func migrateCityToSido() {
@@ -87,8 +106,10 @@ func main() {
 		log.Println(".env 파일 없음 — 환경변수를 직접 사용합니다")
 	}
 
-	repository.InitDB()         // DB 연결
+	repository.ConnectDB()        // DB 연결 (AutoMigrate 전)
 	migrateWishToParticipation() // wishes → participations 테이블 rename
+	migrateDropStatusColumn()    // status NOT NULL 컬럼 제거 (AutoMigrate 전 실행 필수)
+	repository.AutoMigrateDB()   // 스키마 동기화
 	migrateCityToSido()          // 지역명 시도 단위 정규화
 	handlers.InitAuth()          // 로그인 세션 정보 저장
 
