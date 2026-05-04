@@ -64,11 +64,21 @@ async function toggleWish(marathonId, event) {
     updateWishBtn(marathonId);
 
     try {
-        await fetch(`/api/wishes/${marathonId}`, {
+        const res = await fetch(`/api/wishes/${marathonId}`, {
             method: 'POST',
+            credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'wished' })
         });
+        const json = await res.json();
+        console.log('[wish]', res.status, json);
+        if (!res.ok) {
+            // 실패 시 낙관적 업데이트 롤백
+            if (isActive) wishMap[marathonId] = 'wished';
+            else delete wishMap[marathonId];
+            updateWishBtn(marathonId);
+            alert('저장 실패: ' + (json.error || res.status));
+        }
     } finally {
         wishPending.delete(marathonId);
     }

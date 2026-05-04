@@ -42,21 +42,32 @@ func ToggleWish(c *gin.Context) {
 	}
 
 	var wish models.MarathonWish
-	result := repository.DB.Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&wish)
+	// Unscoped: 소프트 딜리트된 레코드도 포함해서 조회
+	result := repository.DB.Unscoped().Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&wish)
 
 	if result.Error == nil {
-		// 이미 존재 → 삭제 (토글 off)
-		repository.DB.Delete(&wish)
-		c.JSON(http.StatusOK, gin.H{"action": "removed", "marathon_id": marathonID})
+		if wish.DeletedAt.Valid {
+			// 소프트 딜리트 상태 → 복원 (토글 on)
+			repository.DB.Unscoped().Model(&wish).Update("deleted_at", nil)
+			c.JSON(http.StatusCreated, gin.H{"action": "created", "data": wish})
+		} else {
+			// 활성 상태 → 삭제 (토글 off)
+			repository.DB.Delete(&wish)
+			c.JSON(http.StatusOK, gin.H{"action": "removed", "marathon_id": marathonID})
+		}
 		return
 	}
 
+	// 레코드 없음 → 새로 생성
 	wish = models.MarathonWish{
 		UserID:     user.ID,
 		MarathonID: uint(marathonID),
 		Status:     "wished",
 	}
-	repository.DB.Create(&wish)
+	if err := repository.DB.Create(&wish).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 	c.JSON(http.StatusCreated, gin.H{"action": "created", "data": wish})
 }
 
