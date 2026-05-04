@@ -28,15 +28,6 @@ func GetMarathons(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": marathons})
 }
 
-func GetCities(c *gin.Context) {
-	var cities []string
-	repository.DB.Model(&models.Marathon{}).
-		Where("city != ''").
-		Distinct("city").
-		Order("city ASC").
-		Pluck("city", &cities)
-	c.JSON(http.StatusOK, gin.H{"data": cities})
-}
 
 func GetMarathon(c *gin.Context) {
 	var marathon models.Marathon

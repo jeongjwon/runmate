@@ -164,11 +164,6 @@ func GetCurrentUser(c *gin.Context) *models.User {
 	return nil
 }
 
-// ── Login page ──────────────────────────────────────────────────────────────
-func LoginPage(c *gin.Context) {
-	// Rendered by main.go (needs template + TemplateData).
-	// This handler is a no-op; page rendering happens in the route closure.
-}
 
 // ── OAuth login redirects ────────────────────────────────────────────────────
 

@@ -154,8 +154,7 @@ func main() {
 
 		// 마라톤 (공개)
 		api.GET("/marathons", handlers.GetMarathons)
-		api.GET("/marathons/cities", handlers.GetCities)
-		api.GET("/marathons/:id", handlers.GetMarathon)
+api.GET("/marathons/:id", handlers.GetMarathon)
 		api.POST("/marathons/sync", handlers.SyncMarathons)
 		api.POST("/marathons/crawl", handlers.CrawlMarathons)
 

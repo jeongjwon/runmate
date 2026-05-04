@@ -5,7 +5,8 @@
 [X] 목록 페이지 변경
 [X] 마라톤 크롤링 -> 지역 분배 or 지도 사용? -> 지역 분배
 
-[ ] wish + registeration -> participation 으로 통합
+[X] wish + registeration -> participation 으로 통합
+[ ] 즐겨찾기 후 기록 추가 후 제거 하고 다시 즐겨찾기 하면 기록이 남아있음
 
 [ ] 공공데이터포털 API 사용하나 ?
 [ ] ai_parser.go 사용하나?
