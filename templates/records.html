@@ -1,136 +1,117 @@
 {{template "layout.html" .}}
 {{define "content"}}
 
-<!-- 페이지 헤더 -->
 <div class="flex items-center justify-between mb-5">
-    <h1 class="text-xl sm:text-2xl font-bold text-gray-800">
-        <i class="fas fa-running text-orange-500 mr-2"></i>기록 & 통계
+    <h1 class="text-2xl font-extrabold flex items-center gap-2" style="color:var(--navy);">
+        <i class="fas fa-chart-line" style="color:var(--mint);"></i>기록 & 통계
     </h1>
-    <button onclick="openAddModal()" class="bg-orange-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-orange-600 transition-colors text-sm sm:text-base">
-        <i class="fas fa-plus mr-1"></i><span class="hidden sm:inline">기록 </span>추가
+    <button onclick="openAddModal()" class="btn-mint">
+        <i class="fas fa-plus text-sm"></i><span class="hidden sm:inline">기록 </span>추가
     </button>
 </div>
 
-<!-- 내부 탭 -->
-<div class="flex gap-1 mb-5 bg-gray-100 rounded-xl p-1">
-    <button onclick="switchTab('records')" id="tab-records"
-        class="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors bg-white text-orange-600 shadow-sm">
+<div class="tab-bar flex gap-1 mb-5">
+    <button onclick="switchTab('records')" id="tab-records" class="tab-btn tab-active flex-1">
         <i class="fas fa-list mr-1"></i>기록
     </button>
-    <button onclick="switchTab('stats')" id="tab-stats"
-        class="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors text-gray-500 hover:text-gray-700">
+    <button onclick="switchTab('stats')" id="tab-stats" class="tab-btn tab-inactive flex-1">
         <i class="fas fa-chart-bar mr-1"></i>통계
     </button>
 </div>
 
-<!-- ══════════════ 기록 탭 ══════════════ -->
+<!-- ══ 기록 탭 ══ -->
 <div id="section-records">
-    <!-- 요약 배지 -->
     <div id="record-summary" class="flex flex-wrap gap-2 mb-4"></div>
     <div id="record-list" class="space-y-3"></div>
 </div>
 
-<!-- ══════════════ 통계 탭 ══════════════ -->
+<!-- ══ 통계 탭 ══ -->
 <div id="section-stats" class="hidden">
-
-    <!-- 전체 요약 카드 4개 -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5" id="summary-cards">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <div class="text-2xl sm:text-3xl font-bold text-orange-500" id="stat-count">-</div>
-            <div class="text-xs text-gray-500 mt-1">총 러닝 횟수</div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+        <div class="card p-4 text-center">
+            <div class="text-2xl sm:text-3xl font-extrabold" style="color:var(--mint);" id="stat-count">-</div>
+            <div class="text-xs mt-1 font-semibold" style="color:var(--text2);">총 러닝 횟수</div>
         </div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <div class="text-2xl sm:text-3xl font-bold text-blue-500" id="stat-dist">-</div>
-            <div class="text-xs text-gray-500 mt-1">총 거리 (km)</div>
+        <div class="card p-4 text-center">
+            <div class="text-2xl sm:text-3xl font-extrabold text-blue-500" id="stat-dist">-</div>
+            <div class="text-xs mt-1 font-semibold" style="color:var(--text2);">총 거리 (km)</div>
         </div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <div class="text-2xl sm:text-3xl font-bold text-green-500" id="stat-time">-</div>
-            <div class="text-xs text-gray-500 mt-1">총 러닝 시간</div>
+        <div class="card p-4 text-center">
+            <div class="text-2xl sm:text-3xl font-extrabold text-emerald-500" id="stat-time">-</div>
+            <div class="text-xs mt-1 font-semibold" style="color:var(--text2);">총 러닝 시간</div>
         </div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 text-center">
-            <div class="text-2xl sm:text-3xl font-bold text-purple-500" id="stat-pace">-</div>
-            <div class="text-xs text-gray-500 mt-1">평균 페이스/km</div>
+        <div class="card p-4 text-center">
+            <div class="text-2xl sm:text-3xl font-extrabold text-purple-500" id="stat-pace">-</div>
+            <div class="text-xs mt-1 font-semibold" style="color:var(--text2);">평균 페이스/km</div>
         </div>
     </div>
 
-    <!-- 기간 탭 -->
-    <div class="flex gap-1 mb-4 bg-gray-100 rounded-xl p-1">
-        <button onclick="setPeriod('weekly')" id="period-weekly"
-            class="period-btn flex-1 py-2 rounded-lg text-sm font-semibold transition-colors bg-white text-orange-600 shadow-sm">주간</button>
-        <button onclick="setPeriod('monthly')" id="period-monthly"
-            class="period-btn flex-1 py-2 rounded-lg text-sm font-semibold transition-colors text-gray-500 hover:text-gray-700">월간</button>
-        <button onclick="setPeriod('yearly')" id="period-yearly"
-            class="period-btn flex-1 py-2 rounded-lg text-sm font-semibold transition-colors text-gray-500 hover:text-gray-700">연간</button>
+    <div class="tab-bar flex gap-1 mb-4">
+        <button onclick="setPeriod('weekly')"  id="period-weekly"  class="period-btn tab-btn tab-active flex-1">주간</button>
+        <button onclick="setPeriod('monthly')" id="period-monthly" class="period-btn tab-btn tab-inactive flex-1">월간</button>
+        <button onclick="setPeriod('yearly')"  id="period-yearly"  class="period-btn tab-btn tab-inactive flex-1">연간</button>
     </div>
 
-    <!-- 주간 -->
     <div id="stats-weekly">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-6 mb-4">
-            <p class="text-sm font-semibold text-gray-600 mb-3">최근 8주 거리 추이</p>
+        <div class="card p-4 sm:p-6 mb-4">
+            <p class="text-sm font-bold mb-3" style="color:var(--text2);">최근 8주 거리 추이</p>
             <canvas id="weekly-chart" height="100"></canvas>
         </div>
-        <div class="overflow-x-auto rounded-xl border border-gray-100 shadow-sm bg-white">
+        <div class="card overflow-hidden">
             <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-500 text-xs">
-                    <tr>
-                        <th class="text-left px-4 py-3">기간</th>
-                        <th class="text-right px-4 py-3">거리</th>
-                        <th class="text-right px-4 py-3 hidden sm:table-cell">시간</th>
-                        <th class="text-right px-4 py-3">횟수</th>
-                        <th class="text-right px-4 py-3">평균 페이스</th>
+                <thead style="background-color:var(--surface2);">
+                    <tr style="color:var(--text2);">
+                        <th class="text-left px-4 py-3 text-xs font-bold">기간</th>
+                        <th class="text-right px-4 py-3 text-xs font-bold">거리</th>
+                        <th class="text-right px-4 py-3 text-xs font-bold hidden sm:table-cell">시간</th>
+                        <th class="text-right px-4 py-3 text-xs font-bold">횟수</th>
+                        <th class="text-right px-4 py-3 text-xs font-bold">평균 페이스</th>
                     </tr>
                 </thead>
-                <tbody id="weekly-table" class="divide-y divide-gray-50"></tbody>
+                <tbody id="weekly-table"></tbody>
             </table>
         </div>
     </div>
 
-    <!-- 월간 -->
     <div id="stats-monthly" class="hidden">
-        <div class="flex items-center gap-3 mb-4">
-            <select id="year-select"
-                class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
-            </select>
+        <div class="mb-4">
+            <select id="year-select" class="input-dark w-auto"></select>
         </div>
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-6 mb-4">
-            <p class="text-sm font-semibold text-gray-600 mb-3">월별 거리 (km)</p>
+        <div class="card p-4 sm:p-6 mb-4">
+            <p class="text-sm font-bold mb-3" style="color:var(--text2);">월별 거리 (km)</p>
             <canvas id="monthly-chart" height="100"></canvas>
         </div>
         <div class="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-2 sm:gap-3" id="monthly-cards"></div>
     </div>
 
-    <!-- 연간 -->
     <div id="stats-yearly" class="hidden">
-        <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-6 mb-4">
-            <p class="text-sm font-semibold text-gray-600 mb-3">연간 총 거리 비교</p>
+        <div class="card p-4 sm:p-6 mb-4">
+            <p class="text-sm font-bold mb-3" style="color:var(--text2);">연간 총 거리 비교</p>
             <canvas id="yearly-chart" height="100"></canvas>
         </div>
         <div class="grid sm:grid-cols-3 gap-3" id="yearly-cards"></div>
     </div>
 </div>
 
-<!-- ══════════════ 기록 추가/수정 모달 ══════════════ -->
-<div id="modal" class="fixed inset-0 bg-black/50 hidden z-50 flex items-end sm:items-center justify-center">
-    <div class="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-xl max-h-[92vh] overflow-y-auto">
-        <div class="px-5 py-4 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white rounded-t-2xl">
-            <h2 class="text-base font-bold text-gray-800" id="modal-title">러닝 기록 추가</h2>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100">
+<!-- ══ 기록 추가/수정 모달 ══ -->
+<div id="modal" class="fixed inset-0 modal-overlay hidden z-50 flex items-end sm:items-center justify-center">
+    <div class="modal-box w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div class="modal-header px-5 py-4 flex justify-between items-center sticky top-0 sm:rounded-t-2xl rounded-t-2xl">
+            <h2 class="text-base font-bold" id="modal-title" style="color:var(--navy);">러닝 기록 추가</h2>
+            <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-[#E4E2DA] transition-colors" style="color:var(--text2);">
                 <i class="fas fa-times"></i>
             </button>
         </div>
         <div class="p-5 space-y-4">
             <input type="hidden" id="edit-id">
-
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">날짜 *</label>
-                    <input id="rec-date" type="date"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">날짜 *</label>
+                    <input id="rec-date" type="date" class="input-dark">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">코스 유형</label>
-                    <select id="rec-route"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">코스 유형</label>
+                    <select id="rec-route" class="input-dark">
                         <option value="road">🛣️ 로드</option>
                         <option value="trail">🌲 트레일</option>
                         <option value="track">🏟️ 트랙</option>
@@ -138,38 +119,30 @@
                     </select>
                 </div>
             </div>
-
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">거리 (km) *</label>
-                    <input id="rec-distance" type="number" step="0.01" placeholder="5.00"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">거리 (km) *</label>
+                    <input id="rec-distance" type="number" step="0.01" placeholder="5.00" class="input-dark">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">시간 (시:분:초) *</label>
+                    <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">시간 (시:분:초) *</label>
                     <div class="flex gap-1 items-center">
-                        <input id="rec-dur-h" type="number" min="0" max="23" placeholder="0"
-                            class="w-full border border-gray-200 rounded-lg px-1 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300">
-                        <span class="text-gray-400 font-bold text-lg">:</span>
-                        <input id="rec-dur-m" type="number" min="0" max="59" placeholder="00"
-                            class="w-full border border-gray-200 rounded-lg px-1 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300">
-                        <span class="text-gray-400 font-bold text-lg">:</span>
-                        <input id="rec-dur-s" type="number" min="0" max="59" placeholder="00"
-                            class="w-full border border-gray-200 rounded-lg px-1 py-2.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300">
+                        <input id="rec-dur-h" type="number" min="0" max="23" placeholder="0"  class="input-dark text-center px-1">
+                        <span class="font-bold" style="color:var(--text3);">:</span>
+                        <input id="rec-dur-m" type="number" min="0" max="59" placeholder="00" class="input-dark text-center px-1">
+                        <span class="font-bold" style="color:var(--text3);">:</span>
+                        <input id="rec-dur-s" type="number" min="0" max="59" placeholder="00" class="input-dark text-center px-1">
                     </div>
                 </div>
             </div>
-
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">심박수 (bpm)</label>
-                    <input id="rec-hr" type="number" placeholder="150"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">심박수 (bpm)</label>
+                    <input id="rec-hr" type="number" placeholder="150" class="input-dark">
                 </div>
                 <div>
-                    <label class="block text-xs font-medium text-gray-600 mb-1">날씨</label>
-                    <select id="rec-weather"
-                        class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">날씨</label>
+                    <select id="rec-weather" class="input-dark">
                         <option value="">선택</option>
                         <option value="sunny">☀️ 맑음</option>
                         <option value="cloudy">☁️ 흐림</option>
@@ -179,66 +152,56 @@
                     </select>
                 </div>
             </div>
-
             <div>
-                <label class="block text-xs font-medium text-gray-600 mb-1">메모</label>
-                <textarea id="rec-notes" rows="2" placeholder="오늘 러닝 어땠나요?"
-                    class="w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"></textarea>
+                <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">메모</label>
+                <textarea id="rec-notes" rows="2" placeholder="오늘 러닝 어땠나요?" class="input-dark resize-none"></textarea>
             </div>
         </div>
         <div class="px-5 pb-5 flex gap-3">
-            <button onclick="closeModal()"
-                class="flex-1 border border-gray-200 rounded-lg py-2.5 text-gray-600 hover:bg-gray-50 transition-colors text-sm font-medium">취소</button>
-            <button onclick="saveRecord()"
-                class="flex-1 bg-orange-500 text-white rounded-lg py-2.5 font-semibold hover:bg-orange-600 transition-colors text-sm">저장</button>
+            <button onclick="closeModal()" class="btn-outline flex-1 py-2.5 text-sm font-bold">취소</button>
+            <button onclick="saveRecord()" class="btn-mint flex-1 justify-center py-2.5 text-sm">저장</button>
         </div>
     </div>
 </div>
 
 <script>
-// ─── 유틸 ────────────────────────────────────────
 const weatherEmoji = { sunny:'☀️', cloudy:'☁️', rainy:'🌧️', snowy:'❄️', windy:'💨' };
 const routeLabels  = { road:'로드', trail:'트레일', track:'트랙', treadmill:'러닝머신' };
 let charts = {};
-let allRecords = []; // 통계용 캐시
+let allRecords = [];
 
-function formatDuration(totalSec) {
-    if (!totalSec) return '-';
-    const h = Math.floor(totalSec / 3600);
-    const m = Math.floor((totalSec % 3600) / 60);
-    const s = totalSec % 60;
-    if (h > 0) return `${h}시간 ${m}분 ${s}초`;
-    if (m > 0) return `${m}분 ${s}초`;
+const CHART_OPTS = {
+    plugins: { legend: { display: false } },
+    scales: {
+        x: { grid: { color: 'rgba(27,45,64,.06)' }, ticks: { color: '#5A6E7E', font: { size: 11 } } },
+        y: { beginAtZero: true, grid: { color: 'rgba(27,45,64,.06)' }, ticks: { color: '#5A6E7E', font: { size: 11 } } }
+    }
+};
+
+function formatDuration(sec) {
+    if (!sec) return '-';
+    const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=sec%60;
+    if (h>0) return `${h}시간 ${m}분 ${s}초`;
+    if (m>0) return `${m}분 ${s}초`;
     return `${s}초`;
 }
-
-function calcAvgPace(totalDistKm, totalSec) {
-    if (!totalDistKm || !totalSec) return '-';
-    const secPerKm = totalSec / totalDistKm;
-    const m = Math.floor(secPerKm / 60);
-    const s = Math.round(secPerKm % 60);
-    return `${m}'${String(s).padStart(2,'0')}"`;
+function calcAvgPace(dist, sec) {
+    if (!dist||!sec) return '-';
+    const spk=sec/dist;
+    return `${Math.floor(spk/60)}'${String(Math.round(spk%60)).padStart(2,'0')}"`;
 }
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
 
-function destroyChart(id) {
-    if (charts[id]) { charts[id].destroy(); delete charts[id]; }
-}
-
-// ─── 탭 전환 ────────────────────────────────────
 function switchTab(tab) {
     ['records','stats'].forEach(t => {
         document.getElementById('section-'+t).classList.add('hidden');
-        const btn = document.getElementById('tab-'+t);
-        btn.className = 'flex-1 py-2 rounded-lg text-sm font-semibold transition-colors text-gray-500 hover:text-gray-700';
+        document.getElementById('tab-'+t).className = 'tab-btn tab-inactive flex-1';
     });
     document.getElementById('section-'+tab).classList.remove('hidden');
-    const active = document.getElementById('tab-'+tab);
-    active.className = 'flex-1 py-2 rounded-lg text-sm font-semibold transition-colors bg-white text-orange-600 shadow-sm';
-
+    document.getElementById('tab-'+tab).className = 'tab-btn tab-active flex-1';
     if (tab === 'stats') loadAllStats();
 }
 
-// ─── 기록 탭 ─────────────────────────────────────
 async function loadRecords() {
     const res = await fetch('/api/records');
     const { data } = await res.json();
@@ -251,99 +214,90 @@ function renderRecords(records) {
     const summary   = document.getElementById('record-summary');
 
     if (records.length) {
-        const totalDist = records.reduce((s,r) => s + r.distance, 0);
-        const totalSec  = records.reduce((s,r) => s + r.duration, 0);
+        const totalDist = records.reduce((s,r) => s+r.distance, 0);
+        const totalSec  = records.reduce((s,r) => s+r.duration, 0);
         summary.innerHTML = `
-            <span class="bg-orange-100 text-orange-700 px-2.5 py-1 rounded-full text-xs font-semibold">${records.length}회</span>
-            <span class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold">${totalDist.toFixed(1)} km</span>
-            <span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-semibold">${formatDuration(totalSec)}</span>
-            <span class="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold">평균 ${calcAvgPace(totalDist, totalSec)}/km</span>`;
+            <span class="badge-mint">${records.length}회</span>
+            <span style="background-color:rgba(59,130,246,.1);color:#3b82f6;border-radius:9999px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;">${totalDist.toFixed(1)} km</span>
+            <span style="background-color:rgba(16,185,129,.1);color:#10b981;border-radius:9999px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;">${formatDuration(totalSec)}</span>
+            <span style="background-color:rgba(139,92,246,.1);color:#8b5cf6;border-radius:9999px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;">평균 ${calcAvgPace(totalDist, totalSec)}/km</span>`;
     } else {
         summary.innerHTML = '';
     }
 
     if (!records.length) {
         container.innerHTML = `
-        <div class="text-center py-20 text-gray-400">
-            <i class="fas fa-running text-5xl mb-4 block opacity-30"></i>
-            <p class="text-lg font-medium">기록이 없습니다</p>
+        <div class="text-center py-20" style="color:var(--text2);">
+            <i class="fas fa-running text-5xl mb-4 block opacity-10" style="color:var(--mint);"></i>
+            <p class="text-lg font-bold" style="color:var(--navy);">기록이 없습니다</p>
             <p class="text-sm mt-1">오른쪽 위 버튼으로 첫 러닝을 기록해보세요!</p>
         </div>`;
         return;
     }
 
     container.innerHTML = records.map(r => `
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-3 sm:p-4 flex items-center justify-between card-hover gap-3">
-        <!-- 날짜 -->
-        <div class="text-center bg-orange-50 rounded-xl px-2.5 py-2 min-w-[48px] sm:min-w-[56px] shrink-0">
-            <div class="text-[10px] text-orange-400 font-semibold">${r.date.slice(5,7)}월</div>
-            <div class="text-xl sm:text-2xl font-bold text-orange-500 leading-tight">${r.date.slice(8,10)}</div>
+    <div class="card card-hover p-3 sm:p-4 flex items-center justify-between gap-3">
+        <div class="text-center rounded-xl px-2.5 py-2 min-w-[52px] shrink-0" style="background-color:rgba(78,203,160,.1);">
+            <div class="text-[10px] font-bold" style="color:var(--mint);">${r.date.slice(5,7)}월</div>
+            <div class="text-xl sm:text-2xl font-extrabold leading-tight" style="color:var(--mint);">${r.date.slice(8,10)}</div>
         </div>
-        <!-- 정보 -->
         <div class="flex-1 min-w-0">
             <div class="flex items-center flex-wrap gap-x-2 gap-y-0.5 mb-1">
-                <span class="text-base sm:text-lg font-bold text-gray-800">${r.distance.toFixed(2)}<span class="text-sm font-normal text-gray-400"> km</span></span>
-                <span class="text-gray-300">·</span>
-                <span class="text-sm font-semibold text-gray-700">${r.duration_formatted}</span>
-                <span class="text-gray-300">·</span>
-                <span class="text-sm text-gray-600 font-medium">${r.pace}/km</span>
+                <span class="text-base sm:text-lg font-extrabold" style="color:var(--navy);">${r.distance.toFixed(2)}<span class="text-sm font-normal" style="color:var(--text2);"> km</span></span>
+                <span style="color:var(--border);">·</span>
+                <span class="text-sm font-semibold" style="color:var(--text2);">${r.duration_formatted}</span>
+                <span style="color:var(--border);">·</span>
+                <span class="text-sm font-bold" style="color:var(--mint);">${r.pace}/km</span>
             </div>
-            <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs text-gray-400">
+            <div class="flex flex-wrap gap-x-2 gap-y-0.5 text-xs" style="color:var(--text3);">
                 ${r.route_type ? `<span>${routeLabels[r.route_type]||r.route_type}</span>` : ''}
-                ${r.heart_rate ? `<span><i class="fas fa-heart text-red-400"></i> ${r.heart_rate}bpm</span>` : ''}
+                ${r.heart_rate ? `<span><i class="fas fa-heart" style="color:#f87171;"></i> ${r.heart_rate}bpm</span>` : ''}
                 ${r.weather ? `<span>${weatherEmoji[r.weather]||''}</span>` : ''}
-                ${r.notes ? `<span class="truncate max-w-[140px] sm:max-w-xs text-gray-300">${r.notes}</span>` : ''}
+                ${r.notes ? `<span class="truncate max-w-[140px] sm:max-w-xs">${r.notes}</span>` : ''}
             </div>
         </div>
-        <!-- 버튼 -->
         <div class="flex gap-1.5 shrink-0">
             <button onclick="openEditModal(${JSON.stringify(r).replace(/"/g,'&quot;')})"
-                class="text-blue-400 hover:text-blue-600 border border-blue-100 hover:border-blue-300 rounded-lg w-8 h-8 flex items-center justify-center transition-colors">
+                class="w-8 h-8 flex items-center justify-center rounded-lg btn-outline transition-colors">
                 <i class="fas fa-edit text-xs"></i>
             </button>
             <button onclick="deleteRecord(${r.id})"
-                class="text-red-400 hover:text-red-600 border border-red-100 hover:border-red-300 rounded-lg w-8 h-8 flex items-center justify-center transition-colors">
+                class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+                style="border:1px solid var(--border);color:var(--text2);"
+                onmouseover="this.style.borderColor='#ef4444';this.style.color='#ef4444'"
+                onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text2)'">
                 <i class="fas fa-trash text-xs"></i>
             </button>
         </div>
     </div>`).join('');
 }
 
-// ─── 통계 탭 ─────────────────────────────────────
 function setPeriod(period) {
     ['weekly','monthly','yearly'].forEach(p => {
         document.getElementById('stats-'+p).classList.add('hidden');
-        const btn = document.getElementById('period-'+p);
-        btn.className = 'period-btn flex-1 py-2 rounded-lg text-sm font-semibold transition-colors text-gray-500 hover:text-gray-700';
+        document.getElementById('period-'+p).className = 'period-btn tab-btn tab-inactive flex-1';
     });
     document.getElementById('stats-'+period).classList.remove('hidden');
-    const active = document.getElementById('period-'+period);
-    active.className = 'period-btn flex-1 py-2 rounded-lg text-sm font-semibold transition-colors bg-white text-orange-600 shadow-sm';
+    document.getElementById('period-'+period).className = 'period-btn tab-btn tab-active flex-1';
 }
 
 async function loadAllStats() {
-    // 전체 요약 카드 (전체 records 기준)
     const res = await fetch('/api/records');
     const { data } = await res.json();
     const records = data || [];
     const totalDist = records.reduce((s,r) => s+r.distance, 0);
     const totalSec  = records.reduce((s,r) => s+r.duration, 0);
-
     document.getElementById('stat-count').textContent = records.length;
     document.getElementById('stat-dist').textContent  = totalDist.toFixed(1);
     document.getElementById('stat-time').textContent  = formatDuration(totalSec);
     document.getElementById('stat-pace').textContent  = calcAvgPace(totalDist, totalSec);
-
-    loadWeekly();
-    loadMonthly();
-    loadYearly();
+    loadWeekly(); loadMonthly(); loadYearly();
 }
 
 async function loadWeekly() {
     const res = await fetch('/api/stats?period=weekly');
     const { data } = await res.json();
     if (!data) return;
-
     destroyChart('weekly');
     charts.weekly = new Chart(document.getElementById('weekly-chart'), {
         type: 'bar',
@@ -351,23 +305,19 @@ async function loadWeekly() {
             labels: data.map(d => d.week),
             datasets: [{
                 data: data.map(d => d.total_distance),
-                backgroundColor: data.map(d => d.total_distance > 0 ? 'rgba(249,115,22,0.75)' : 'rgba(229,231,235,0.6)'),
+                backgroundColor: data.map(d => d.total_distance>0 ? 'rgba(78,203,160,.7)' : 'rgba(27,45,64,.06)'),
                 borderRadius: 5,
             }]
         },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' } } }
-        }
+        options: CHART_OPTS
     });
-
     document.getElementById('weekly-table').innerHTML = data.map(w => `
-    <tr class="hover:bg-gray-50">
-        <td class="px-4 py-2.5 font-medium text-gray-700">${w.week}</td>
-        <td class="px-4 py-2.5 text-right font-bold text-orange-500">${w.total_distance.toFixed(1)} km</td>
-        <td class="px-4 py-2.5 text-right text-gray-600 hidden sm:table-cell">${w.total_duration_formatted}</td>
-        <td class="px-4 py-2.5 text-right text-gray-600">${w.run_count}회</td>
-        <td class="px-4 py-2.5 text-right font-medium text-purple-600">${w.avg_pace||'-'}</td>
+    <tr style="border-top:1px solid var(--border);" onmouseover="this.style.backgroundColor='var(--surface2)'" onmouseout="this.style.backgroundColor='transparent'">
+        <td class="px-4 py-2.5 font-semibold text-sm" style="color:var(--navy);">${w.week}</td>
+        <td class="px-4 py-2.5 text-right text-sm font-bold" style="color:var(--mint);">${w.total_distance.toFixed(1)} km</td>
+        <td class="px-4 py-2.5 text-right text-sm hidden sm:table-cell" style="color:var(--text2);">${w.total_duration_formatted}</td>
+        <td class="px-4 py-2.5 text-right text-sm" style="color:var(--text2);">${w.run_count}회</td>
+        <td class="px-4 py-2.5 text-right text-sm font-bold text-purple-500">${w.avg_pace||'-'}</td>
     </tr>`).join('');
 }
 
@@ -376,7 +326,6 @@ async function loadMonthly() {
     const res = await fetch(`/api/stats?period=monthly&year=${year}`);
     const { data } = await res.json();
     if (!data) return;
-
     destroyChart('monthly');
     charts.monthly = new Chart(document.getElementById('monthly-chart'), {
         type: 'bar',
@@ -384,22 +333,18 @@ async function loadMonthly() {
             labels: data.map(d => d.month),
             datasets: [{
                 data: data.map(d => d.total_distance),
-                backgroundColor: data.map(d => d.total_distance > 0 ? 'rgba(249,115,22,0.75)' : 'rgba(229,231,235,0.4)'),
+                backgroundColor: data.map(d => d.total_distance>0 ? 'rgba(78,203,160,.7)' : 'rgba(27,45,64,.06)'),
                 borderRadius: 5,
             }]
         },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' } } }
-        }
+        options: CHART_OPTS
     });
-
     document.getElementById('monthly-cards').innerHTML = data.map(m => `
-    <div class="bg-white rounded-xl border ${m.total_distance>0?'border-orange-100':'border-gray-100'} shadow-sm p-3 text-center">
-        <div class="text-xs font-semibold text-gray-400 mb-1">${m.month}</div>
-        <div class="text-lg sm:text-xl font-bold ${m.total_distance>0?'text-orange-500':'text-gray-300'}">${m.total_distance.toFixed(0)}<span class="text-xs font-normal">km</span></div>
-        <div class="text-[11px] text-gray-400">${m.run_count}회</div>
-        ${m.avg_pace && m.avg_pace!=='-' ? `<div class="text-[11px] text-purple-500 font-medium mt-0.5">${m.avg_pace}/km</div>` : ''}
+    <div class="card p-3 text-center" style="${m.total_distance>0 ? 'border-color:rgba(78,203,160,.35);' : ''}">
+        <div class="text-xs font-bold mb-1" style="color:var(--text2);">${m.month}</div>
+        <div class="text-lg sm:text-xl font-extrabold" style="color:${m.total_distance>0?'var(--mint)':'var(--text3)'};">${m.total_distance.toFixed(0)}<span class="text-xs font-normal">km</span></div>
+        <div class="text-[11px]" style="color:var(--text3);">${m.run_count}회</div>
+        ${m.avg_pace&&m.avg_pace!=='-' ? `<div class="text-[11px] text-purple-500 font-bold mt-0.5">${m.avg_pace}/km</div>` : ''}
     </div>`).join('');
 }
 
@@ -407,129 +352,108 @@ async function loadYearly() {
     const res = await fetch('/api/stats?period=yearly');
     const { data } = await res.json();
     if (!data) return;
-
     destroyChart('yearly');
-    const colors = ['rgba(249,115,22,0.5)','rgba(249,115,22,0.7)','rgba(249,115,22,0.9)'];
     charts.yearly = new Chart(document.getElementById('yearly-chart'), {
         type: 'bar',
         data: {
             labels: data.map(d => d.year),
             datasets: [{
                 data: data.map(d => d.total_distance),
-                backgroundColor: colors,
+                backgroundColor: ['rgba(78,203,160,.4)','rgba(78,203,160,.65)','rgba(78,203,160,.9)'],
                 borderRadius: 8,
             }]
         },
-        options: {
-            plugins: { legend: { display: false } },
-            scales: { y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)' } } }
-        }
+        options: CHART_OPTS
     });
-
     document.getElementById('yearly-cards').innerHTML = data.map(y => `
-    <div class="bg-white rounded-xl border border-gray-100 shadow-sm p-4 sm:p-5">
-        <h3 class="text-base font-bold text-gray-700 mb-3">${y.year}</h3>
+    <div class="card p-4 sm:p-5">
+        <h3 class="text-base font-extrabold mb-3" style="color:var(--navy);">${y.year}</h3>
         <div class="grid grid-cols-2 gap-2">
-            <div class="bg-orange-50 rounded-lg p-3 text-center">
-                <div class="text-xl sm:text-2xl font-bold text-orange-500">${y.total_distance.toFixed(0)}</div>
-                <div class="text-xs text-gray-400 mt-0.5">km</div>
+            <div class="rounded-xl p-3 text-center" style="background-color:rgba(78,203,160,.08);">
+                <div class="text-xl sm:text-2xl font-extrabold" style="color:var(--mint);">${y.total_distance.toFixed(0)}</div>
+                <div class="text-xs" style="color:var(--text2);">km</div>
             </div>
-            <div class="bg-blue-50 rounded-lg p-3 text-center">
-                <div class="text-xl sm:text-2xl font-bold text-blue-500">${y.run_count}</div>
-                <div class="text-xs text-gray-400 mt-0.5">회</div>
+            <div class="rounded-xl p-3 text-center" style="background-color:rgba(59,130,246,.08);">
+                <div class="text-xl sm:text-2xl font-extrabold text-blue-500">${y.run_count}</div>
+                <div class="text-xs" style="color:var(--text2);">회</div>
             </div>
-            <div class="bg-green-50 rounded-lg p-3 text-center">
-                <div class="text-base sm:text-lg font-bold text-green-600">${y.total_duration_formatted}</div>
-                <div class="text-xs text-gray-400 mt-0.5">총 시간</div>
+            <div class="rounded-xl p-3 text-center" style="background-color:rgba(16,185,129,.08);">
+                <div class="text-base sm:text-lg font-bold text-emerald-500">${y.total_duration_formatted}</div>
+                <div class="text-xs" style="color:var(--text2);">총 시간</div>
             </div>
-            <div class="bg-purple-50 rounded-lg p-3 text-center">
-                <div class="text-base sm:text-lg font-bold text-purple-600">${y.avg_pace||'-'}</div>
-                <div class="text-xs text-gray-400 mt-0.5">평균 페이스</div>
+            <div class="rounded-xl p-3 text-center" style="background-color:rgba(139,92,246,.08);">
+                <div class="text-base sm:text-lg font-bold text-purple-500">${y.avg_pace||'-'}</div>
+                <div class="text-xs" style="color:var(--text2);">평균 페이스</div>
             </div>
         </div>
     </div>`).join('');
 }
 
-// ─── 연도 선택 초기화 ─────────────────────────────
 const currentYear = new Date().getFullYear();
 const yearSelect = document.getElementById('year-select');
-for (let y = currentYear; y >= currentYear - 3; y--) {
+for (let y = currentYear; y >= currentYear-3; y--) {
     const opt = document.createElement('option');
-    opt.value = y; opt.textContent = y + '년';
+    opt.value = y; opt.textContent = y+'년';
     if (y === currentYear) opt.selected = true;
     yearSelect.appendChild(opt);
 }
 yearSelect.addEventListener('change', loadMonthly);
 
-// ─── 모달 ────────────────────────────────────────
-function setDurationFields(totalSeconds) {
-    document.getElementById('rec-dur-h').value = Math.floor(totalSeconds / 3600);
-    document.getElementById('rec-dur-m').value = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2,'0');
-    document.getElementById('rec-dur-s').value = String(totalSeconds % 60).padStart(2,'0');
+function setDurationFields(sec) {
+    document.getElementById('rec-dur-h').value = Math.floor(sec/3600);
+    document.getElementById('rec-dur-m').value = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+    document.getElementById('rec-dur-s').value = String(sec%60).padStart(2,'0');
 }
-
 function getDurationString() {
-    const h = parseInt(document.getElementById('rec-dur-h').value) || 0;
-    const m = parseInt(document.getElementById('rec-dur-m').value) || 0;
-    const s = parseInt(document.getElementById('rec-dur-s').value) || 0;
+    const h=parseInt(document.getElementById('rec-dur-h').value)||0;
+    const m=parseInt(document.getElementById('rec-dur-m').value)||0;
+    const s=parseInt(document.getElementById('rec-dur-s').value)||0;
     return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 }
-
 function openAddModal() {
     document.getElementById('modal-title').textContent = '러닝 기록 추가';
     document.getElementById('edit-id').value = '';
     document.getElementById('rec-date').value = new Date().toISOString().split('T')[0];
     document.getElementById('rec-distance').value = '';
-    document.getElementById('rec-dur-h').value = '0';
-    document.getElementById('rec-dur-m').value = '00';
-    document.getElementById('rec-dur-s').value = '00';
+    setDurationFields(0);
     document.getElementById('rec-hr').value = '';
     document.getElementById('rec-notes').value = '';
     document.getElementById('rec-weather').value = '';
     document.getElementById('rec-route').value = 'road';
     document.getElementById('modal').classList.remove('hidden');
 }
-
 function openEditModal(record) {
     document.getElementById('modal-title').textContent = '러닝 기록 수정';
     document.getElementById('edit-id').value = record.id;
     document.getElementById('rec-date').value = record.date;
     document.getElementById('rec-distance').value = record.distance;
     setDurationFields(record.duration);
-    document.getElementById('rec-hr').value = record.heart_rate || '';
-    document.getElementById('rec-notes').value = record.notes || '';
-    document.getElementById('rec-weather').value = record.weather || '';
-    document.getElementById('rec-route').value = record.route_type || 'road';
+    document.getElementById('rec-hr').value = record.heart_rate||'';
+    document.getElementById('rec-notes').value = record.notes||'';
+    document.getElementById('rec-weather').value = record.weather||'';
+    document.getElementById('rec-route').value = record.route_type||'road';
     document.getElementById('modal').classList.remove('hidden');
 }
-
-function closeModal() {
-    document.getElementById('modal').classList.add('hidden');
-}
+function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 
 async function saveRecord() {
-    const id       = document.getElementById('edit-id').value;
+    const id = document.getElementById('edit-id').value;
     const duration = getDurationString();
     const body = {
         date:       document.getElementById('rec-date').value,
         distance:   parseFloat(document.getElementById('rec-distance').value),
-        duration:   duration,
-        heart_rate: parseInt(document.getElementById('rec-hr').value) || 0,
+        duration,
+        heart_rate: parseInt(document.getElementById('rec-hr').value)||0,
         weather:    document.getElementById('rec-weather').value,
         route_type: document.getElementById('rec-route').value,
         notes:      document.getElementById('rec-notes').value,
     };
-
     const [h,m,s] = duration.split(':').map(Number);
-    if (!body.date || !body.distance || (h===0 && m===0 && s===0)) {
-        alert('날짜, 거리, 시간은 필수입니다.'); return;
-    }
-
+    if (!body.date||!body.distance||(h===0&&m===0&&s===0)) { alert('날짜, 거리, 시간은 필수입니다.'); return; }
     const method = id ? 'PUT' : 'POST';
     const url    = id ? '/api/records/'+id : '/api/records';
     const res    = await fetch(url, { method, headers:{'Content-Type':'application/json'}, body:JSON.stringify(body) });
     const data   = await res.json();
-
     if (res.ok) { closeModal(); loadRecords(); }
     else alert(data.error);
 }
@@ -542,12 +466,10 @@ async function deleteRecord(id) {
     loadRecords();
 }
 
-// 모달 바깥 클릭 닫기
 document.getElementById('modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
 });
 
-// 초기 로드
 loadRecords();
 </script>
 {{end}}

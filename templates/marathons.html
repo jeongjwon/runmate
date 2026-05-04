@@ -3,19 +3,19 @@
 {{$loggedIn := ne .User nil}}
 
 <div class="mb-6 flex flex-col gap-4">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-flag-checkered text-orange-500 mr-2"></i>마라톤 일정</h1>
-    </div>
-    <div class="flex flex-col md:flex-row gap-2">
+    <h1 class="text-2xl font-extrabold flex items-center gap-2" style="color:var(--navy);">
+        <i class="fas fa-flag-checkered" style="color:var(--mint);"></i>마라톤 일정
+    </h1>
+
+    <div class="flex flex-col sm:flex-row gap-2">
         <div class="relative flex-1">
-            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
-            <input id="search-input" type="text" placeholder="대회명 또는 장소 검색"
-                class="w-full border border-gray-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+            <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs" style="color:var(--text3);"></i>
+            <input id="search-input" type="text" placeholder="대회명 또는 장소 검색" class="input-dark pl-8">
         </div>
-        <select id="filter-city" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+        <select id="filter-city" class="input-dark sm:w-36">
             <option value="">전체 지역</option>
         </select>
-        <select id="filter-category" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+        <select id="filter-category" class="input-dark sm:w-36">
             <option value="">전체 종목</option>
             <option value="5K">5K</option>
             <option value="10K">10K</option>
@@ -23,25 +23,24 @@
             <option value="Full">풀코스</option>
         </select>
         {{if $loggedIn}}
-        <select id="filter-wish" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+        <select id="filter-wish" class="input-dark sm:w-36">
             <option value="">전체 보기</option>
-            <option value="wished">⭐ 참여</option>
+            <option value="wished">⭐ 내 마라톤</option>
         </select>
         {{end}}
     </div>
-    <p id="result-count" class="text-sm text-gray-400"></p>
+    <p id="result-count" class="text-sm" style="color:var(--text3);"></p>
 </div>
 
-<div id="marathon-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+<div id="marathon-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
 
 <script>
 const IS_LOGGED_IN = {{if $loggedIn}}true{{else}}false{{end}};
 let searchTimer = null;
 let wishMap = {};
 let lastMarathons = [];
-const wishPending = new Set(); // 진행 중인 요청 중복 방지
+const wishPending = new Set();
 
-// ── 위시 로드 ─────────────────────────────────────────────────────────────────
 async function loadWishes() {
     if (!IS_LOGGED_IN) return;
     const res = await fetch('/api/wishes');
@@ -53,12 +52,10 @@ async function loadWishes() {
 async function toggleWish(marathonId, event) {
     event.stopPropagation();
     if (!IS_LOGGED_IN) { location.href = '/login'; return; }
-    if (wishPending.has(marathonId)) return; // 진행 중이면 무시
+    if (wishPending.has(marathonId)) return;
 
     wishPending.add(marathonId);
     const isActive = !!wishMap[marathonId];
-
-    // 낙관적 UI 업데이트 (요청 전 미리 반영)
     if (isActive) delete wishMap[marathonId];
     else          wishMap[marathonId] = 'wished';
     updateWishBtn(marathonId);
@@ -70,43 +67,42 @@ async function toggleWish(marathonId, event) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ status: 'wished' })
         });
-        const json = await res.json();
-        console.log('[wish]', res.status, json);
         if (!res.ok) {
-            // 실패 시 낙관적 업데이트 롤백
             if (isActive) wishMap[marathonId] = 'wished';
             else delete wishMap[marathonId];
             updateWishBtn(marathonId);
-            alert('저장 실패: ' + (json.error || res.status));
         }
     } finally {
         wishPending.delete(marathonId);
     }
 
-    const filterWish = document.getElementById('filter-wish');
-    if (filterWish && filterWish.value) renderMarathons(lastMarathons);
+    const fw = document.getElementById('filter-wish');
+    if (fw && fw.value) renderMarathons(lastMarathons);
 }
 
 function updateWishBtn(marathonId) {
     const btn = document.getElementById(`btn-wish-${marathonId}`);
     if (!btn) return;
     const active = !!wishMap[marathonId];
-    btn.innerHTML = active
-        ? '<i class="fas fa-star text-yellow-400"></i>'
-        : '<i class="far fa-star text-gray-300"></i>';
-    btn.title = active ? '참여 취소' : '참여';
-    btn.className = `w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${active ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 hover:border-yellow-300'}`;
+    if (active) {
+        btn.style.cssText = 'background-color:rgba(78,203,160,.12);border:1.5px solid rgba(78,203,160,.5);';
+        btn.innerHTML = '<i class="fas fa-star" style="color:#4ECBA0;font-size:.9rem;"></i>';
+        btn.title = '참여 취소';
+    } else {
+        btn.style.cssText = 'border:1.5px solid var(--border);background-color:var(--surface);';
+        btn.innerHTML = '<i class="far fa-star" style="color:var(--text3);font-size:.9rem;"></i>';
+        btn.title = '참여';
+    }
 }
 
-// ── 마라톤 로드 ───────────────────────────────────────────────────────────────
 async function loadCities() {
     const res = await fetch('/api/marathons/cities');
     const { data } = await res.json();
-    const select = document.getElementById('filter-city');
+    const sel = document.getElementById('filter-city');
     (data || []).forEach(city => {
         const opt = document.createElement('option');
         opt.value = city; opt.textContent = city;
-        select.appendChild(opt);
+        sel.appendChild(opt);
     });
 }
 
@@ -114,8 +110,7 @@ async function loadMarathons() {
     const city     = document.getElementById('filter-city').value;
     const category = document.getElementById('filter-category').value;
     const search   = document.getElementById('search-input').value.trim();
-
-    const params = new URLSearchParams();
+    const params   = new URLSearchParams();
     if (city)     params.set('city', city);
     if (category) params.set('category', category);
     if (search)   params.set('search', search);
@@ -129,15 +124,17 @@ async function loadMarathons() {
 function renderMarathons(marathons) {
     const container = document.getElementById('marathon-list');
     const countEl   = document.getElementById('result-count');
-
-    const filterWish = document.getElementById('filter-wish');
-    const wishFilter = filterWish ? filterWish.value : '';
-    const filtered   = wishFilter ? marathons.filter(m => !!wishMap[m.id]) : marathons;
+    const fw        = document.getElementById('filter-wish');
+    const filtered  = (fw && fw.value) ? marathons.filter(m => !!wishMap[m.id]) : marathons;
 
     countEl.textContent = `총 ${filtered.length}개 대회`;
 
     if (!filtered.length) {
-        container.innerHTML = '<p class="text-gray-400 col-span-3 text-center py-12">조건에 맞는 마라톤이 없습니다.</p>';
+        container.innerHTML = `
+        <div class="col-span-3 text-center py-20" style="color:var(--text2);">
+            <i class="fas fa-flag-checkered text-5xl mb-4 block opacity-20"></i>
+            <p class="text-lg font-semibold">조건에 맞는 마라톤이 없습니다.</p>
+        </div>`;
         return;
     }
 
@@ -148,60 +145,77 @@ function renderMarathons(marathons) {
         const fee        = m.entry_fee > 0 ? m.entry_fee.toLocaleString() + '원' : '미정';
         const active     = !!wishMap[m.id];
 
-        const officialLink = m.official_url
-            ? `<a href="${m.official_url}" target="_blank"
-                class="flex items-center justify-center gap-1 flex-1 border border-gray-200 rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-                <i class="fas fa-external-link-alt"></i> 공식 홈페이지
-               </a>`
-            : '';
+        const statusBadge = isPast
+            ? '<span class="badge-gray">종료</span>'
+            : '<span class="badge-mint" style="background-color:rgba(78,203,160,.2);">모집중</span>';
 
+        const wishBtnStyle = active
+            ? 'background-color:rgba(78,203,160,.15);border:1.5px solid rgba(78,203,160,.5);'
+            : 'border:1.5px solid rgba(27,45,64,.15);background-color:rgba(27,45,64,.04);';
+        const wishIcon = active
+            ? '<i class="fas fa-star" style="color:#4ECBA0;font-size:.85rem;"></i>'
+            : '<i class="far fa-star" style="color:#9AAAB8;font-size:.85rem;"></i>';
         const wishBtn = IS_LOGGED_IN ? `
             <button id="btn-wish-${m.id}"
                 onclick="toggleWish(${m.id}, event)"
                 title="${active ? '참여 취소' : '참여'}"
-                class="w-8 h-8 flex items-center justify-center rounded-lg border transition-colors shrink-0 ${active ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 hover:border-yellow-300'}">
-                ${active ? '<i class="fas fa-star text-yellow-400"></i>' : '<i class="far fa-star text-gray-300"></i>'}
+                style="${wishBtnStyle}"
+                class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors shrink-0">
+                ${wishIcon}
             </button>` : '';
 
+        const officialLink = m.official_url
+            ? `<a href="${m.official_url}" target="_blank"
+                class="btn-outline flex items-center justify-center gap-1.5 w-full py-2 text-xs font-semibold mt-3">
+                <i class="fas fa-external-link-alt text-xs"></i> 공식 홈페이지
+               </a>`
+            : '';
+
         return `
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 card-hover overflow-hidden">
-            <div class="bg-gradient-to-r from-orange-400 to-rose-400 px-5 py-4">
-                <div class="flex justify-between items-start">
-                    <span class="bg-white bg-opacity-20 text-white text-xs px-2 py-1 rounded-full">${m.city || '지역 미상'}</span>
-                    ${isPast
-                        ? '<span class="bg-gray-700 bg-opacity-50 text-white text-xs px-2 py-1 rounded-full">종료</span>'
-                        : '<span class="bg-green-400 bg-opacity-80 text-white text-xs px-2 py-1 rounded-full">모집중</span>'}
+        <div class="card card-hover overflow-hidden">
+            <!-- 헤더: 연한 네이비 틴트 -->
+            <div class="px-4 py-3.5 flex items-start justify-between gap-2" style="background-color:#EEF2F8;border-bottom:1px solid var(--border);">
+                <div class="min-w-0 flex-1">
+                    <h3 class="font-bold text-sm leading-snug mb-1.5" style="color:var(--navy);">${m.name}</h3>
+                    <div class="flex items-center gap-1.5">
+                        <span class="badge-mint">${m.city || '지역 미상'}</span>
+                        ${statusBadge}
+                    </div>
                 </div>
-                <h3 class="text-white font-bold text-lg mt-2 leading-tight">${m.name}</h3>
+                ${wishBtn}
             </div>
-            <div class="p-5">
-                <div class="space-y-2 text-sm text-gray-600 mb-4">
-                    <div class="flex items-center gap-2"><i class="fas fa-calendar text-orange-400 w-4"></i>${m.date}</div>
-                    <div class="flex items-center gap-2"><i class="fas fa-map-marker-alt text-orange-400 w-4"></i>${m.location || '장소 미정'}</div>
-                    <div class="flex items-center gap-2"><i class="fas fa-won-sign text-orange-400 w-4"></i>${fee}</div>
+            <!-- 바디 -->
+            <div class="px-4 py-3.5">
+                <div class="text-xs space-y-1 mb-3" style="color:var(--text2);">
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-calendar w-3.5 text-center shrink-0" style="color:var(--mint);"></i>
+                        <span>${m.date}</span>
+                        <span class="mx-0.5" style="color:var(--border);">·</span>
+                        <i class="fas fa-won-sign w-3.5 text-center shrink-0" style="color:var(--mint);"></i>
+                        <span>${fee}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i class="fas fa-map-marker-alt w-3.5 text-center shrink-0" style="color:var(--mint);"></i>
+                        <span class="truncate">${m.location || '장소 미정'}</span>
+                    </div>
                 </div>
-                <div class="flex gap-1 flex-wrap mb-4">
-                    ${categories.map(cat => `<span class="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">${cat}</span>`).join('')}
+                <div class="flex gap-1 flex-wrap">
+                    ${categories.map(cat => `<span class="badge-mint">${cat}</span>`).join('')}
                 </div>
-                ${m.description ? `<p class="text-xs text-gray-400 mb-4 line-clamp-2">${m.description}</p>` : ''}
-                <div class="flex gap-2 items-center">
-                    ${officialLink}
-                    ${wishBtn}
-                </div>
+                ${officialLink}
             </div>
         </div>`;
     }).join('');
 }
 
-// ── 이벤트 ───────────────────────────────────────────────────────────────────
 document.getElementById('filter-city').addEventListener('change', loadMarathons);
 document.getElementById('filter-category').addEventListener('change', loadMarathons);
 document.getElementById('search-input').addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(loadMarathons, 300);
 });
-const filterWishEl = document.getElementById('filter-wish');
-if (filterWishEl) filterWishEl.addEventListener('change', () => renderMarathons(lastMarathons));
+const fw = document.getElementById('filter-wish');
+if (fw) fw.addEventListener('change', () => renderMarathons(lastMarathons));
 
 Promise.all([loadCities(), loadWishes()]).then(() => loadMarathons());
 </script>

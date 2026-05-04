@@ -1,181 +1,479 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RunMate</title>
-    <link rel="icon" type="image/png" href="/static/favicon.png">
+    <link rel="icon" type="image/png" href="/static/favicon.png" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
     <style>
-        .card-hover { transition: transform 0.15s, box-shadow 0.15s; }
-        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
-        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      :root {
+        --bg: #f5f4f0;
+        --surface: #ffffff;
+        --surface2: #f0efea;
+        --border: #e4e2da;
+        --mint: #4ecba0;
+        --mint-dk: #39b88e;
+        --mint-bg: rgba(78, 203, 160, 0.09);
+        --navy: #1b2d40;
+        --text: #1b2d40;
+        --text2: #5a6e7e;
+        --text3: #9aaab8;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        background-color: var(--bg);
+        color: var(--text);
+      }
+
+      /* ── Card ─────────────────────────────── */
+      .card {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 0.875rem;
+      }
+      .card-header {
+        background-color: var(--surface2);
+        border-bottom: 1px solid var(--border);
+      }
+      .card-hover {
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+      }
+      .card-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 32px rgba(27, 45, 64, 0.1);
+      }
+
+      /* ── Input / Select ───────────────────── */
+      .input-dark {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 0.5rem;
+        padding: 0.5rem 0.75rem;
+        font-size: 0.875rem;
+        outline: none;
+        transition:
+          border-color 0.15s,
+          box-shadow 0.15s;
+        width: 100%;
+      }
+      .input-dark::placeholder {
+        color: var(--text3);
+      }
+      .input-dark:focus {
+        border-color: var(--mint);
+        box-shadow: 0 0 0 3px rgba(78, 203, 160, 0.15);
+      }
+
+      /* ── Badge ────────────────────────────── */
+      .badge-mint {
+        display: inline-flex;
+        align-items: center;
+        background-color: var(--mint-bg);
+        color: var(--mint-dk);
+        border-radius: 9999px;
+        padding: 0.15rem 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 700;
+      }
+      .badge-gray {
+        display: inline-flex;
+        align-items: center;
+        background-color: rgba(90, 110, 126, 0.1);
+        color: var(--text2);
+        border-radius: 9999px;
+        padding: 0.15rem 0.6rem;
+        font-size: 0.72rem;
+        font-weight: 600;
+      }
+
+      /* ── Button ───────────────────────────── */
+      .btn-mint {
+        background-color: var(--mint);
+        color: #fff;
+        font-weight: 700;
+        border-radius: 0.5rem;
+        padding: 0.5rem 1.1rem;
+        font-size: 0.875rem;
+        transition:
+          background-color 0.15s,
+          transform 0.1s;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+      }
+      .btn-mint:hover {
+        background-color: var(--mint-dk);
+      }
+      .btn-outline {
+        border: 1px solid var(--border);
+        color: var(--text2);
+        border-radius: 0.5rem;
+        background-color: var(--surface);
+        transition:
+          border-color 0.15s,
+          color 0.15s;
+        cursor: pointer;
+      }
+      .btn-outline:hover {
+        border-color: var(--mint);
+        color: var(--mint-dk);
+      }
+
+      /* ── Tabs ─────────────────────────────── */
+      .tab-bar {
+        background-color: var(--surface2);
+        border-radius: 0.75rem;
+        padding: 0.25rem;
+      }
+      .tab-btn {
+        border-radius: 0.5rem;
+        padding: 0.45rem 0.5rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        transition: all 0.15s;
+        cursor: pointer;
+        width: 100%;
+      }
+      .tab-active {
+        background-color: var(--surface);
+        color: var(--mint-dk) !important;
+        box-shadow: 0 1px 4px rgba(27, 45, 64, 0.08);
+      }
+      .tab-inactive {
+        color: var(--text2);
+      }
+      .tab-inactive:hover {
+        color: var(--navy);
+      }
+
+      /* ── Nav ──────────────────────────────── */
+      .nav-item {
+        border-radius: 0.5rem;
+        transition:
+          background-color 0.15s,
+          color 0.15s;
+      }
+      .nav-item:hover {
+        background-color: var(--mint-bg);
+        color: var(--mint-dk) !important;
+      }
+      .nav-active {
+        background-color: var(--mint-bg);
+        color: var(--mint-dk) !important;
+      }
+      .bottom-nav {
+        transition: color 0.15s;
+      }
+      .bottom-nav-active {
+        color: var(--mint) !important;
+      }
+
+      /* ── Modal ────────────────────────────── */
+      .modal-overlay {
+        background-color: rgba(27, 45, 64, 0.45);
+      }
+      .modal-box {
+        background-color: var(--surface);
+        border: 1px solid var(--border);
+      }
+      .modal-header {
+        background-color: var(--surface2);
+        border-bottom: 1px solid var(--border);
+      }
+
+      /* ── Misc ─────────────────────────────── */
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
+      .line-clamp-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
     </style>
-</head>
-<body class="bg-gray-50 min-h-screen">
+  </head>
+  <body class="min-h-screen">
+    <!-- 네비게이션 -->
+    <nav
+      style="
+        background-color: var(--surface);
+        border-bottom: 1px solid var(--border);
+      "
+      class="sticky top-0 z-40 shadow-sm"
+    >
+      <div class="max-w-5xl mx-auto px-4">
+        <div class="flex items-center justify-between h-14">
+          <a
+            href="/"
+            class="flex items-center gap-2 font-extrabold text-lg shrink-0"
+            style="color: var(--navy)"
+          >
+            <img src="/static/favicon.png" class="w-8 h-8 rounded-xl" />
+            RUN<span style="color: var(--mint)">MATE</span>
+          </a>
 
-    <!-- 데스크톱 네비게이션 -->
-    <nav class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-40">
-        <div class="max-w-5xl mx-auto px-4">
-            <div class="flex items-center justify-between h-14">
-                <a href="/" class="flex items-center gap-2 text-orange-500 font-bold text-lg shrink-0">
-                    <i class="fas fa-running"></i> RunMate
-                </a>
-                <!-- 데스크톱 메뉴 -->
-                <div class="hidden sm:flex items-center gap-1">
-                    <a href="/" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
-                        <i class="fas fa-flag-checkered mr-1"></i>마라톤
-                    </a>
-                    {{if .User}}
-                    <a href="/registrations" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
-                        <i class="fas fa-star mr-1"></i>내 마라톤
-                    </a>
-                    <a href="/records" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
-                        <i class="fas fa-chart-line mr-1"></i>기록&통계
-                    </a>
-                    {{end}}
-
-                    <!-- 로그인/유저 영역 -->
-                    {{if .User}}
-                    <div class="relative ml-2" id="user-menu-wrapper">
-                        <button onclick="toggleUserMenu()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors">
-                            {{if .User.Picture}}
-                            <img src="{{.User.Picture}}" class="w-7 h-7 rounded-full object-cover" onerror="this.style.display='none'">
-                            {{else}}
-                            <div class="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 text-xs font-bold">
-                                {{if gt (len .User.Name) 0}}{{slice .User.Name 0 1}}{{else}}?{{end}}
-                            </div>
-                            {{end}}
-                            <span class="text-sm font-medium text-gray-700">{{.User.Name}}</span>
-                            <i class="fas fa-chevron-down text-xs text-gray-400"></i>
-                        </button>
-                        <div id="user-dropdown" class="hidden absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 w-44 z-50">
-                            <div class="px-4 py-2.5 border-b border-gray-50">
-                                <p class="text-sm font-semibold text-gray-800 truncate">{{.User.Name}}</p>
-                                <p class="text-xs text-gray-400 truncate">{{.User.Email}}</p>
-                            </div>
-                            <form action="/auth/logout" method="POST" class="m-0">
-                                <button type="submit" class="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2">
-                                    <i class="fas fa-sign-out-alt w-4"></i>로그아웃
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                    {{else}}
-                    <a href="/login" class="ml-2 bg-orange-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
-                        로그인
-                    </a>
-                    {{end}}
-                </div>
-                <!-- 모바일 햄버거 -->
-                <button id="mobile-menu-btn" class="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100">
-                    <i class="fas fa-bars text-lg"></i>
-                </button>
-            </div>
-        </div>
-        <!-- 모바일 드롭다운 -->
-        <div id="mobile-menu" class="hidden sm:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
-            <a href="/" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
-                <i class="fas fa-flag-checkered w-4 text-center"></i>마라톤 일정
+          <div class="hidden sm:flex items-center gap-0.5">
+            <a
+              href="/"
+              class="nav-item px-3 py-2 text-sm font-semibold"
+              style="color: var(--text2)"
+            >
+              <i class="fas fa-flag-checkered mr-1"></i>마라톤
             </a>
             {{if .User}}
-            <a href="/registrations" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
-                <i class="fas fa-star w-4 text-center"></i>내 마라톤
+            <a
+              href="/registrations"
+              class="nav-item px-3 py-2 text-sm font-semibold"
+              style="color: var(--text2)"
+            >
+              <i class="fas fa-star mr-1"></i>내 마라톤
             </a>
-            <a href="/records" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
-                <i class="fas fa-chart-line w-4 text-center"></i>기록 & 통계
+            <a
+              href="/records"
+              class="nav-item px-3 py-2 text-sm font-semibold"
+              style="color: var(--text2)"
+            >
+              <i class="fas fa-chart-line mr-1"></i>기록&통계
             </a>
-            <div class="border-t border-gray-100 pt-2 mt-1">
-                <div class="flex items-center gap-3 px-3 py-2">
-                    {{if .User.Picture}}
-                    <img src="{{.User.Picture}}" class="w-8 h-8 rounded-full object-cover" onerror="this.style.display='none'">
-                    {{else}}
-                    <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 text-sm font-bold">
-                        {{slice .User.Name 0 1}}
-                    </div>
-                    {{end}}
-                    <div>
-                        <p class="text-sm font-semibold text-gray-800">{{.User.Name}}</p>
-                        <p class="text-xs text-gray-400">{{.User.Email}}</p>
-                    </div>
+            {{end}} {{if .User}}
+            <div class="relative ml-2" id="user-menu-wrapper">
+              <button
+                onclick="toggleUserMenu()"
+                class="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-colors hover:bg-[#F0EFEA]"
+                style="color: var(--text)"
+              >
+                {{if .User.Picture}}
+                <img
+                  src="{{.User.Picture}}"
+                  class="w-7 h-7 rounded-full object-cover border-2"
+                  style="border-color: var(--mint)"
+                  onerror="this.style.display = 'none'"
+                />
+                {{else}}
+                <div
+                  class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold text-white"
+                  style="background-color: var(--mint)"
+                >
+                  {{if gt (len .User.Name) 0}}{{slice .User.Name 0
+                  1}}{{else}}?{{end}}
+                </div>
+                {{end}}
+                <span class="text-sm font-semibold">{{.User.Name}}</span>
+                <i
+                  class="fas fa-chevron-down text-xs"
+                  style="color: var(--text3)"
+                ></i>
+              </button>
+              <div
+                id="user-dropdown"
+                class="hidden absolute right-0 top-full mt-1 rounded-xl shadow-xl py-1 w-48 z-50"
+                style="
+                  background-color: var(--surface);
+                  border: 1px solid var(--border);
+                "
+              >
+                <div
+                  class="px-4 py-2.5"
+                  style="border-bottom: 1px solid var(--border)"
+                >
+                  <p
+                    class="text-sm font-bold truncate"
+                    style="color: var(--navy)"
+                  >
+                    {{.User.Name}}
+                  </p>
+                  <p class="text-xs truncate" style="color: var(--text3)">
+                    {{.User.Email}}
+                  </p>
                 </div>
                 <form action="/auth/logout" method="POST" class="m-0">
-                    <button type="submit" class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 font-medium transition-colors text-sm">
-                        <i class="fas fa-sign-out-alt w-4 text-center"></i>로그아웃
-                    </button>
+                  <button
+                    type="submit"
+                    class="w-full text-left px-4 py-2.5 text-sm flex items-center gap-2 transition-colors hover:bg-red-50"
+                    style="color: #ef4444"
+                  >
+                    <i class="fas fa-sign-out-alt w-4"></i>로그아웃
+                  </button>
                 </form>
+              </div>
             </div>
             {{else}}
-            <a href="/login" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-orange-500 text-white font-semibold transition-colors text-sm">
-                <i class="fas fa-sign-in-alt w-4 text-center"></i>로그인
-            </a>
+            <a href="/login" class="btn-mint ml-2">로그인</a>
             {{end}}
+          </div>
+
+          <button
+            id="mobile-menu-btn"
+            class="sm:hidden p-2 rounded-lg transition-colors hover:bg-[#F0EFEA]"
+            style="color: var(--text2)"
+          >
+            <i class="fas fa-bars text-lg"></i>
+          </button>
         </div>
+      </div>
+
+      <div
+        id="mobile-menu"
+        class="hidden sm:hidden border-t px-4 py-3 space-y-1"
+        style="background-color: var(--surface); border-color: var(--border)"
+      >
+        <a
+          href="/"
+          class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-semibold"
+          style="color: var(--text2)"
+        >
+          <i class="fas fa-flag-checkered w-4 text-center"></i>마라톤 일정
+        </a>
+        {{if .User}}
+        <a
+          href="/registrations"
+          class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-semibold"
+          style="color: var(--text2)"
+        >
+          <i class="fas fa-star w-4 text-center"></i>내 마라톤
+        </a>
+        <a
+          href="/records"
+          class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm font-semibold"
+          style="color: var(--text2)"
+        >
+          <i class="fas fa-chart-line w-4 text-center"></i>기록 & 통계
+        </a>
+        <div class="pt-2 mt-1" style="border-top: 1px solid var(--border)">
+          <div class="flex items-center gap-3 px-3 py-2">
+            {{if .User.Picture}}
+            <img
+              src="{{.User.Picture}}"
+              class="w-8 h-8 rounded-full object-cover border-2"
+              style="border-color: var(--mint)"
+              onerror="this.style.display = 'none'"
+            />
+            {{else}}
+            <div
+              class="w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold text-white"
+              style="background-color: var(--mint)"
+            >
+              {{if gt (len .User.Name) 0}}{{slice .User.Name 0
+              1}}{{else}}?{{end}}
+            </div>
+            {{end}}
+            <div>
+              <p class="text-sm font-bold" style="color: var(--navy)">
+                {{.User.Name}}
+              </p>
+              <p class="text-xs" style="color: var(--text3)">{{.User.Email}}</p>
+            </div>
+          </div>
+          <form action="/auth/logout" method="POST" class="m-0">
+            <button
+              type="submit"
+              class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-colors hover:bg-red-50"
+              style="color: #ef4444"
+            >
+              <i class="fas fa-sign-out-alt w-4 text-center"></i>로그아웃
+            </button>
+          </form>
+        </div>
+        {{else}}
+        <a
+          href="/login"
+          class="btn-mint flex items-center justify-center gap-2 py-2.5 w-full"
+        >
+          <i class="fas fa-sign-in-alt"></i>로그인
+        </a>
+        {{end}}
+      </div>
     </nav>
 
-    <main class="max-w-5xl mx-auto px-4 py-6 pb-20 sm:pb-8">
-        {{template "content" .}}
+    <main class="max-w-5xl mx-auto px-4 py-6 pb-24 sm:pb-10">
+      {{template "content" .}}
     </main>
 
     <!-- 모바일 하단 탭바 -->
-    <div class="sm:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 pb-safe z-40">
-        <div class="flex">
-            <a href="/" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
-                <i class="fas fa-flag-checkered text-lg mb-0.5"></i>
-                <span class="text-[10px] font-medium">마라톤</span>
-            </a>
-            {{if .User}}
-            <a href="/registrations" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
-                <i class="fas fa-star text-lg mb-0.5"></i>
-                <span class="text-[10px] font-medium">내 마라톤</span>
-            </a>
-            <a href="/records" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
-                <i class="fas fa-chart-line text-lg mb-0.5"></i>
-                <span class="text-[10px] font-medium">기록</span>
-            </a>
-            {{else}}
-            <a href="/login" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
-                <i class="fas fa-sign-in-alt text-lg mb-0.5"></i>
-                <span class="text-[10px] font-medium">로그인</span>
-            </a>
-            {{end}}
-            <a href="/" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
-                <i class="fas fa-home text-lg mb-0.5"></i>
-                <span class="text-[10px] font-medium">홈</span>
-            </a>
-        </div>
+    <div
+      class="sm:hidden fixed bottom-0 left-0 right-0 border-t pb-safe z-40"
+      style="background-color: var(--surface); border-color: var(--border)"
+    >
+      <div class="flex">
+        <a
+          href="/"
+          class="bottom-nav flex-1 flex flex-col items-center py-2.5 transition-colors"
+          style="color: var(--text3)"
+        >
+          <i class="fas fa-flag-checkered text-lg mb-0.5"></i>
+          <span class="text-[10px] font-bold">마라톤</span>
+        </a>
+        {{if .User}}
+        <a
+          href="/registrations"
+          class="bottom-nav flex-1 flex flex-col items-center py-2.5 transition-colors"
+          style="color: var(--text3)"
+        >
+          <i class="fas fa-star text-lg mb-0.5"></i>
+          <span class="text-[10px] font-bold">내 마라톤</span>
+        </a>
+        <a
+          href="/records"
+          class="bottom-nav flex-1 flex flex-col items-center py-2.5 transition-colors"
+          style="color: var(--text3)"
+        >
+          <i class="fas fa-chart-line text-lg mb-0.5"></i>
+          <span class="text-[10px] font-bold">기록</span>
+        </a>
+        {{else}}
+        <a
+          href="/login"
+          class="bottom-nav flex-1 flex flex-col items-center py-2.5 transition-colors"
+          style="color: var(--text3)"
+        >
+          <i class="fas fa-sign-in-alt text-lg mb-0.5"></i>
+          <span class="text-[10px] font-bold">로그인</span>
+        </a>
+        {{end}}
+      </div>
     </div>
 
     <script>
-        document.getElementById('mobile-menu-btn').addEventListener('click', function() {
-            document.getElementById('mobile-menu').classList.toggle('hidden');
+      document
+        .getElementById("mobile-menu-btn")
+        .addEventListener("click", function () {
+          document.getElementById("mobile-menu").classList.toggle("hidden");
         });
 
-        const path = window.location.pathname;
-        document.querySelectorAll('.nav-item').forEach(link => {
-            if (link.getAttribute('href') === path) {
-                link.classList.add('bg-orange-100', 'text-orange-600');
-                link.classList.remove('text-gray-600');
-            }
-        });
-        document.querySelectorAll('.bottom-nav').forEach(link => {
-            if (link.getAttribute('href') === path) {
-                link.classList.add('text-orange-500');
-                link.classList.remove('text-gray-400');
-            }
-        });
-
-        function toggleUserMenu() {
-            document.getElementById('user-dropdown').classList.toggle('hidden');
+      const path = window.location.pathname;
+      document.querySelectorAll(".nav-item").forEach((link) => {
+        if (link.getAttribute("href") === path)
+          link.classList.add("nav-active");
+      });
+      document.querySelectorAll(".bottom-nav").forEach((link) => {
+        if (link.getAttribute("href") === path) {
+          link.classList.add("bottom-nav-active");
+          link.style.color = "";
         }
-        document.addEventListener('click', function(e) {
-            const wrapper = document.getElementById('user-menu-wrapper');
-            if (wrapper && !wrapper.contains(e.target)) {
-                document.getElementById('user-dropdown').classList.add('hidden');
-            }
-        });
+      });
+
+      function toggleUserMenu() {
+        document.getElementById("user-dropdown").classList.toggle("hidden");
+      }
+      document.addEventListener("click", function (e) {
+        const w = document.getElementById("user-menu-wrapper");
+        if (w && !w.contains(e.target))
+          document.getElementById("user-dropdown").classList.add("hidden");
+      });
     </script>
-</body>
+  </body>
 </html>
