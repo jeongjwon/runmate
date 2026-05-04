@@ -7,7 +7,6 @@ import (
 	"time"
 )
 
-// calcPace: 총 초 기준으로 km당 페이스 계산
 func calcPace(distanceKm float64, durationSec int) string {
 	if distanceKm == 0 || durationSec == 0 {
 		return "-"
@@ -18,7 +17,7 @@ func calcPace(distanceKm float64, durationSec int) string {
 	return fmt.Sprintf("%d'%02d\"", mins, secs)
 }
 
-func GetWeeklyStats(year, week int) []models.WeeklyStats {
+func GetWeeklyStats(userID uint) []models.WeeklyStats {
 	var stats []models.WeeklyStats
 
 	now := time.Now()
@@ -30,7 +29,11 @@ func GetWeeklyStats(year, week int) []models.WeeklyStats {
 		endStr := weekEnd.Format("2006-01-02")
 
 		var records []models.RunningRecord
-		repository.DB.Where("date BETWEEN ? AND ?", startStr, endStr).Find(&records)
+		q := repository.DB.Where("date BETWEEN ? AND ?", startStr, endStr)
+		if userID > 0 {
+			q = q.Where("user_id = ?", userID)
+		}
+		q.Find(&records)
 
 		var totalDist float64
 		var totalDur int
@@ -51,7 +54,7 @@ func GetWeeklyStats(year, week int) []models.WeeklyStats {
 	return stats
 }
 
-func GetMonthlyStats(year int) []models.MonthlyStats {
+func GetMonthlyStats(userID uint, year int) []models.MonthlyStats {
 	var stats []models.MonthlyStats
 
 	for month := 1; month <= 12; month++ {
@@ -60,7 +63,11 @@ func GetMonthlyStats(year int) []models.MonthlyStats {
 		endStr := nextMonth.AddDate(0, 0, -1).Format("2006-01-02")
 
 		var records []models.RunningRecord
-		repository.DB.Where("date BETWEEN ? AND ?", startStr, endStr).Find(&records)
+		q := repository.DB.Where("date BETWEEN ? AND ?", startStr, endStr)
+		if userID > 0 {
+			q = q.Where("user_id = ?", userID)
+		}
+		q.Find(&records)
 
 		var totalDist float64
 		var totalDur int
@@ -86,7 +93,7 @@ func GetMonthlyStats(year int) []models.MonthlyStats {
 	return stats
 }
 
-func GetYearlyStats() []models.YearlyStats {
+func GetYearlyStats(userID uint) []models.YearlyStats {
 	var stats []models.YearlyStats
 
 	currentYear := time.Now().Year()
@@ -95,7 +102,11 @@ func GetYearlyStats() []models.YearlyStats {
 		endStr := fmt.Sprintf("%d-12-31", year)
 
 		var records []models.RunningRecord
-		repository.DB.Where("date BETWEEN ? AND ?", startStr, endStr).Find(&records)
+		q := repository.DB.Where("date BETWEEN ? AND ?", startStr, endStr)
+		if userID > 0 {
+			q = q.Where("user_id = ?", userID)
+		}
+		q.Find(&records)
 
 		var totalDist float64
 		var totalDur int
@@ -104,8 +115,6 @@ func GetYearlyStats() []models.YearlyStats {
 			totalDur += r.Duration
 		}
 
-		monthlyBreakdown := GetMonthlyStats(year)
-
 		stats = append(stats, models.YearlyStats{
 			Year:                   fmt.Sprintf("%d년", year),
 			TotalDistance:          totalDist,
@@ -113,7 +122,7 @@ func GetYearlyStats() []models.YearlyStats {
 			TotalDurationFormatted: models.FormatDuration(totalDur),
 			RunCount:               len(records),
 			AvgPace:                calcPace(totalDist, totalDur),
-			MonthlyBreakdown:       monthlyBreakdown,
+			MonthlyBreakdown:       GetMonthlyStats(userID, year),
 		})
 	}
 	return stats

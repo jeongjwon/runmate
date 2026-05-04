@@ -2,8 +2,10 @@ package repository
 
 import (
 	"log"
+	"os"
 	"runmate/models"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -13,14 +15,23 @@ var DB *gorm.DB
 
 func InitDB() {
 	var err error
-	DB, err = gorm.Open(sqlite.Open("runmate.db"), &gorm.Config{
+	cfg := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
-	})
+	}
+
+	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+		log.Println("PostgreSQL(Supabase)에 연결합니다")
+		DB, err = gorm.Open(postgres.Open(dsn), cfg)
+	} else {
+		log.Println("SQLite(로컬)에 연결합니다")
+		DB, err = gorm.Open(sqlite.Open("runmate.db"), cfg)
+	}
 	if err != nil {
 		log.Fatal("DB 연결 실패:", err)
 	}
 
 	err = DB.AutoMigrate(
+		&models.User{},
 		&models.Marathon{},
 		&models.Registration{},
 		&models.RunningRecord{},
@@ -40,7 +51,6 @@ func seedMarathons() {
 	}
 
 	marathons := []models.Marathon{
-		// ── 2026 상반기 ──────────────────────────────────────────
 		{
 			Name:            "2026 서울국제마라톤 (동아마라톤)",
 			Date:            "2026-03-15",
@@ -85,7 +95,6 @@ func seedMarathons() {
 			EntryFee:        45000,
 			MaxParticipants: 10000,
 		},
-		// ── 2026 하반기 ──────────────────────────────────────────
 		{
 			Name:            "2026 춘천마라톤",
 			Date:            "2026-10-25",

@@ -10,7 +10,6 @@
     <style>
         .card-hover { transition: transform 0.15s, box-shadow 0.15s; }
         .card-hover:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.10); }
-        /* 모바일 safe area */
         .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
     </style>
 </head>
@@ -24,16 +23,50 @@
                     <i class="fas fa-running"></i> RunMate
                 </a>
                 <!-- 데스크톱 메뉴 -->
-                <div class="hidden sm:flex gap-1">
+                <div class="hidden sm:flex items-center gap-1">
                     <a href="/marathons" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
                         <i class="fas fa-flag-checkered mr-1"></i>마라톤
                     </a>
+                    {{if .User}}
                     <a href="/registrations" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
                         <i class="fas fa-ticket mr-1"></i>내 신청
                     </a>
                     <a href="/records" class="nav-item px-3 py-2 rounded-lg text-sm text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
                         <i class="fas fa-chart-line mr-1"></i>기록&통계
                     </a>
+                    {{end}}
+
+                    <!-- 로그인/유저 영역 -->
+                    {{if .User}}
+                    <div class="relative ml-2" id="user-menu-wrapper">
+                        <button onclick="toggleUserMenu()" class="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors">
+                            {{if .User.Picture}}
+                            <img src="{{.User.Picture}}" class="w-7 h-7 rounded-full object-cover" onerror="this.style.display='none'">
+                            {{else}}
+                            <div class="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 text-xs font-bold">
+                                {{if gt (len .User.Name) 0}}{{slice .User.Name 0 1}}{{else}}?{{end}}
+                            </div>
+                            {{end}}
+                            <span class="text-sm font-medium text-gray-700">{{.User.Name}}</span>
+                            <i class="fas fa-chevron-down text-xs text-gray-400"></i>
+                        </button>
+                        <div id="user-dropdown" class="hidden absolute right-0 top-full mt-1 bg-white rounded-xl shadow-lg border border-gray-100 py-1 w-44 z-50">
+                            <div class="px-4 py-2.5 border-b border-gray-50">
+                                <p class="text-sm font-semibold text-gray-800 truncate">{{.User.Name}}</p>
+                                <p class="text-xs text-gray-400 truncate">{{.User.Email}}</p>
+                            </div>
+                            <form action="/auth/logout" method="POST" class="m-0">
+                                <button type="submit" class="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-2">
+                                    <i class="fas fa-sign-out-alt w-4"></i>로그아웃
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    {{else}}
+                    <a href="/login" class="ml-2 bg-orange-500 text-white px-4 py-1.5 rounded-lg text-sm font-semibold hover:bg-orange-600 transition-colors">
+                        로그인
+                    </a>
+                    {{end}}
                 </div>
                 <!-- 모바일 햄버거 -->
                 <button id="mobile-menu-btn" class="sm:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100">
@@ -46,12 +79,38 @@
             <a href="/marathons" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
                 <i class="fas fa-flag-checkered w-4 text-center"></i>마라톤 일정
             </a>
+            {{if .User}}
             <a href="/registrations" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
                 <i class="fas fa-ticket w-4 text-center"></i>내 신청 목록
             </a>
             <a href="/records" class="nav-item flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-orange-50 hover:text-orange-500 font-medium transition-colors">
                 <i class="fas fa-chart-line w-4 text-center"></i>기록 & 통계
             </a>
+            <div class="border-t border-gray-100 pt-2 mt-1">
+                <div class="flex items-center gap-3 px-3 py-2">
+                    {{if .User.Picture}}
+                    <img src="{{.User.Picture}}" class="w-8 h-8 rounded-full object-cover" onerror="this.style.display='none'">
+                    {{else}}
+                    <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-500 text-sm font-bold">
+                        {{slice .User.Name 0 1}}
+                    </div>
+                    {{end}}
+                    <div>
+                        <p class="text-sm font-semibold text-gray-800">{{.User.Name}}</p>
+                        <p class="text-xs text-gray-400">{{.User.Email}}</p>
+                    </div>
+                </div>
+                <form action="/auth/logout" method="POST" class="m-0">
+                    <button type="submit" class="w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-lg text-red-500 hover:bg-red-50 font-medium transition-colors text-sm">
+                        <i class="fas fa-sign-out-alt w-4 text-center"></i>로그아웃
+                    </button>
+                </form>
+            </div>
+            {{else}}
+            <a href="/login" class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-orange-500 text-white font-semibold transition-colors text-sm">
+                <i class="fas fa-sign-in-alt w-4 text-center"></i>로그인
+            </a>
+            {{end}}
         </div>
     </nav>
 
@@ -66,6 +125,7 @@
                 <i class="fas fa-flag-checkered text-lg mb-0.5"></i>
                 <span class="text-[10px] font-medium">마라톤</span>
             </a>
+            {{if .User}}
             <a href="/registrations" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
                 <i class="fas fa-ticket text-lg mb-0.5"></i>
                 <span class="text-[10px] font-medium">내 신청</span>
@@ -74,6 +134,12 @@
                 <i class="fas fa-chart-line text-lg mb-0.5"></i>
                 <span class="text-[10px] font-medium">기록</span>
             </a>
+            {{else}}
+            <a href="/login" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
+                <i class="fas fa-sign-in-alt text-lg mb-0.5"></i>
+                <span class="text-[10px] font-medium">로그인</span>
+            </a>
+            {{end}}
             <a href="/" class="bottom-nav flex-1 flex flex-col items-center py-2.5 text-gray-400 hover:text-orange-500 transition-colors">
                 <i class="fas fa-home text-lg mb-0.5"></i>
                 <span class="text-[10px] font-medium">홈</span>
@@ -82,13 +148,10 @@
     </div>
 
     <script>
-        // 햄버거 토글
         document.getElementById('mobile-menu-btn').addEventListener('click', function() {
-            const menu = document.getElementById('mobile-menu');
-            menu.classList.toggle('hidden');
+            document.getElementById('mobile-menu').classList.toggle('hidden');
         });
 
-        // 현재 페이지 네비게이션 활성화
         const path = window.location.pathname;
         document.querySelectorAll('.nav-item').forEach(link => {
             if (link.getAttribute('href') === path) {
@@ -100,6 +163,16 @@
             if (link.getAttribute('href') === path) {
                 link.classList.add('text-orange-500');
                 link.classList.remove('text-gray-400');
+            }
+        });
+
+        function toggleUserMenu() {
+            document.getElementById('user-dropdown').classList.toggle('hidden');
+        }
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('user-menu-wrapper');
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('user-dropdown').classList.add('hidden');
             }
         });
     </script>

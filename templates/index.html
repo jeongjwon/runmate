@@ -4,6 +4,10 @@
     <div class="text-8xl mb-6">🏃</div>
     <h1 class="text-5xl font-bold text-gray-800 mb-4">RunMate</h1>
     <p class="text-xl text-gray-500 mb-10">한국 마라톤 일정 조회 · 참가 신청 · 러닝 기록 관리</p>
+
+    {{if .User}}
+    <!-- 로그인 상태: 대시보드 요약 -->
+    <p class="text-gray-500 mb-6">안녕하세요, <span class="text-orange-500 font-semibold">{{.User.Name}}</span>님! 오늘도 힘차게 달려봐요 🏅</p>
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-10" id="summary-cards">
         <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
             <div class="text-3xl font-bold text-orange-500" id="total-marathons">-</div>
@@ -30,8 +34,37 @@
             기록 & 통계
         </a>
     </div>
+    {{else}}
+    <!-- 비로그인 상태: 소개 + 로그인 유도 -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-2xl mx-auto mb-10 text-left">
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <div class="text-2xl mb-2">🗓️</div>
+            <h3 class="font-bold text-gray-800 mb-1">마라톤 일정 조회</h3>
+            <p class="text-sm text-gray-500">전국 마라톤 대회 일정을 한눈에 확인하세요.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <div class="text-2xl mb-2">🎟️</div>
+            <h3 class="font-bold text-gray-800 mb-1">참가 신청 관리</h3>
+            <p class="text-sm text-gray-500">내 마라톤 참가 신청을 편리하게 관리하세요.</p>
+        </div>
+        <div class="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+            <div class="text-2xl mb-2">📊</div>
+            <h3 class="font-bold text-gray-800 mb-1">러닝 기록 & 통계</h3>
+            <p class="text-sm text-gray-500">나의 러닝 기록을 저장하고 성장을 확인하세요.</p>
+        </div>
+    </div>
+    <div class="flex gap-4 justify-center">
+        <a href="/login" class="bg-orange-500 text-white px-8 py-3 rounded-xl font-semibold hover:bg-orange-600 transition-colors">
+            <i class="fas fa-sign-in-alt mr-2"></i>소셜 로그인으로 시작하기
+        </a>
+        <a href="/marathons" class="bg-white text-gray-700 px-8 py-3 rounded-xl font-semibold border border-gray-200 hover:bg-gray-50 transition-colors">
+            마라톤 일정 보기
+        </a>
+    </div>
+    {{end}}
 </div>
 
+{{if .User}}
 <script>
 async function loadSummary() {
     const [marathonsRes, regsRes, recordsRes] = await Promise.all([
@@ -51,4 +84,5 @@ async function loadSummary() {
 }
 loadSummary();
 </script>
+{{end}}
 {{end}}

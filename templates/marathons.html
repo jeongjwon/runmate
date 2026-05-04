@@ -1,5 +1,6 @@
 {{template "layout.html" .}}
 {{define "content"}}
+{{$loggedIn := ne .User nil}}
 <div class="mb-6 flex flex-col gap-4">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-flag-checkered text-orange-500 mr-2"></i>마라톤 일정</h1>
@@ -64,6 +65,7 @@
 </div>
 
 <script>
+const IS_LOGGED_IN = {{if $loggedIn}}true{{else}}false{{end}};
 let selectedMarathonId = null;
 let searchTimer = null;
 
@@ -137,7 +139,11 @@ function renderMarathons(marathons) {
                 ${m.description ? `<p class="text-xs text-gray-400 mb-4 line-clamp-2">${m.description}</p>` : ''}
                 <div class="flex gap-2">
                     ${officialLink}
-                    ${!isPast ? `<button onclick="openModal(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.categories}')" class="flex-1 bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition-colors">참가 신청</button>` : ''}
+                    ${!isPast
+                        ? IS_LOGGED_IN
+                            ? `<button onclick="openModal(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.categories}')" class="flex-1 bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition-colors">참가 신청</button>`
+                            : `<a href="/login" class="flex-1 border border-orange-300 text-orange-500 rounded-lg py-2 text-sm font-semibold hover:bg-orange-50 transition-colors text-center">로그인 후 신청</a>`
+                        : ''}
                 </div>
             </div>
         </div>`;

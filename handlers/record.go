@@ -13,8 +13,14 @@ import (
 )
 
 func GetRecords(c *gin.Context) {
+	user := GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusOK, gin.H{"data": []models.RunningRecord{}})
+		return
+	}
+
 	var records []models.RunningRecord
-	query := repository.DB.Order("date DESC")
+	query := repository.DB.Where("user_id = ?", user.ID).Order("date DESC")
 
 	if from := c.Query("from"); from != "" {
 		query = query.Where("date >= ?", from)
@@ -28,8 +34,13 @@ func GetRecords(c *gin.Context) {
 }
 
 func GetRecord(c *gin.Context) {
+	user := GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
+		return
+	}
 	var record models.RunningRecord
-	if err := repository.DB.First(&record, c.Param("id")).Error; err != nil {
+	if err := repository.DB.Where("id = ? AND user_id = ?", c.Param("id"), user.ID).First(&record).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "기록을 찾을 수 없습니다"})
 		return
 	}
@@ -47,10 +58,16 @@ func calcPace(distKm float64, durationSec int) string {
 }
 
 func CreateRecord(c *gin.Context) {
+	user := GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
+		return
+	}
+
 	var input struct {
 		Date      string  `json:"date" binding:"required"`
 		Distance  float64 `json:"distance" binding:"required,gt=0"`
-		Duration  string  `json:"duration" binding:"required"` // "HH:MM:SS" or "MM:SS"
+		Duration  string  `json:"duration" binding:"required"`
 		HeartRate int     `json:"heart_rate"`
 		Calories  int     `json:"calories"`
 		RouteType string  `json:"route_type"`
@@ -69,6 +86,7 @@ func CreateRecord(c *gin.Context) {
 	}
 
 	record := models.RunningRecord{
+		UserID:    &user.ID,
 		Date:      input.Date,
 		Distance:  input.Distance,
 		Duration:  durationSec,
@@ -85,8 +103,14 @@ func CreateRecord(c *gin.Context) {
 }
 
 func UpdateRecord(c *gin.Context) {
+	user := GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
+		return
+	}
+
 	var record models.RunningRecord
-	if err := repository.DB.First(&record, c.Param("id")).Error; err != nil {
+	if err := repository.DB.Where("id = ? AND user_id = ?", c.Param("id"), user.ID).First(&record).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "기록을 찾을 수 없습니다"})
 		return
 	}
@@ -94,7 +118,7 @@ func UpdateRecord(c *gin.Context) {
 	var input struct {
 		Date      string  `json:"date"`
 		Distance  float64 `json:"distance"`
-		Duration  string  `json:"duration"` // "HH:MM:SS" or "MM:SS"
+		Duration  string  `json:"duration"`
 		HeartRate int     `json:"heart_rate"`
 		Calories  int     `json:"calories"`
 		RouteType string  `json:"route_type"`
@@ -146,15 +170,21 @@ func UpdateRecord(c *gin.Context) {
 	updates["pace"] = calcPace(dist, dur)
 
 	repository.DB.Model(&record).Updates(updates)
-	repository.DB.First(&record, record.ID) // 최신 상태 reload
+	repository.DB.First(&record, record.ID)
 	record.DurationFormatted = models.FormatDuration(record.Duration)
 
 	c.JSON(http.StatusOK, gin.H{"data": record, "message": "기록이 수정되었습니다"})
 }
 
 func DeleteRecord(c *gin.Context) {
+	user := GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
+		return
+	}
+
 	var record models.RunningRecord
-	if err := repository.DB.First(&record, c.Param("id")).Error; err != nil {
+	if err := repository.DB.Where("id = ? AND user_id = ?", c.Param("id"), user.ID).First(&record).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "기록을 찾을 수 없습니다"})
 		return
 	}
@@ -163,6 +193,12 @@ func DeleteRecord(c *gin.Context) {
 }
 
 func GetStats(c *gin.Context) {
+	user := GetCurrentUser(c)
+	var userID uint
+	if user != nil {
+		userID = user.ID
+	}
+
 	period := c.Query("period")
 	yearStr := c.Query("year")
 
@@ -175,13 +211,13 @@ func GetStats(c *gin.Context) {
 
 	switch period {
 	case "weekly":
-		stats := services.GetWeeklyStats(year, 0)
+		stats := services.GetWeeklyStats(userID)
 		c.JSON(http.StatusOK, gin.H{"data": stats, "period": "weekly"})
 	case "monthly":
-		stats := services.GetMonthlyStats(year)
+		stats := services.GetMonthlyStats(userID, year)
 		c.JSON(http.StatusOK, gin.H{"data": stats, "period": "monthly", "year": year})
 	case "yearly":
-		stats := services.GetYearlyStats()
+		stats := services.GetYearlyStats(userID)
 		c.JSON(http.StatusOK, gin.H{"data": stats, "period": "yearly"})
 	default:
 		c.JSON(http.StatusBadRequest, gin.H{"error": "period 파라미터가 필요합니다 (weekly/monthly/yearly)"})

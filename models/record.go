@@ -13,6 +13,7 @@ type RunningRecord struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
+	UserID            *uint   `json:"user_id" gorm:"index"`
 	Date              string  `json:"date" gorm:"not null"`
 	Distance          float64 `json:"distance" gorm:"not null"`
 	Duration          int     `json:"duration" gorm:"not null"` // 총 초(seconds)

@@ -32,6 +32,7 @@ type Registration struct {
 	UpdatedAt time.Time      `json:"updated_at"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 
+	UserID     *uint    `json:"user_id" gorm:"index"`
 	MarathonID uint     `json:"marathon_id" gorm:"not null"`
 	Marathon   Marathon `json:"marathon,omitempty" gorm:"foreignKey:MarathonID"`
 	RunnerName string   `json:"runner_name" gorm:"not null"`
