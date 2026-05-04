@@ -154,13 +154,14 @@ func main() {
 
 		// 마라톤 (공개)
 		api.GET("/marathons", handlers.GetMarathons)
-api.GET("/marathons/:id", handlers.GetMarathon)
+		api.GET("/marathons/:id", handlers.GetMarathon)
 		api.POST("/marathons/sync", handlers.SyncMarathons)
 		api.POST("/marathons/crawl", handlers.CrawlMarathons)
 
 		// 참여 마라톤
 		api.GET("/participations", handlers.GetParticipations)
-		api.POST("/participations/:marathon_id", handlers.RequireAuth(), handlers.ToggleParticipation)
+		api.POST("/participations/:marathon_id", handlers.RequireAuth(), handlers.AddParticipation)
+		api.DELETE("/participations/:marathon_id", handlers.RequireAuth(), handlers.RemoveParticipation)
 		api.PUT("/participations/:marathon_id/record", handlers.RequireAuth(), handlers.UpdateParticipationRecord)
 
 		// 러닝 기록 (인증 필요)

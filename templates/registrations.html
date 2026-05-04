@@ -119,9 +119,8 @@ function renderParticipations(participations) {
 async function removeParticipation(marathonId) {
     if (!confirm('내 마라톤 목록에서 제거하시겠습니까?')) return;
     await fetch(`/api/participations/${marathonId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
+        method: 'DELETE',
+        credentials: 'same-origin',
     });
     loadParticipations();
 }

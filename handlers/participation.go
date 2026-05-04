@@ -20,48 +20,57 @@ func GetParticipations(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": participations})
 }
 
-func ToggleParticipation(c *gin.Context) {
+func AddParticipation(c *gin.Context) {
 	user := GetCurrentUser(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
 		return
 	}
-
 	marathonID, err := strconv.ParseUint(c.Param("marathon_id"), 10, 64)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 마라톤 ID"})
 		return
 	}
 
-	// body가 없어도 허용 (toggle이므로)
-	c.ShouldBindJSON(&struct{}{})
-
 	var p models.MarathonParticipation
 	result := repository.DB.Unscoped().Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&p)
 
 	if result.Error == nil {
 		if p.DeletedAt.Valid {
-			// 소프트 딜리트 상태 → 복원 (토글 on)
+			// 소프트 딜리트 상태 → 복원
 			repository.DB.Unscoped().Model(&p).Update("deleted_at", nil)
-			c.JSON(http.StatusCreated, gin.H{"action": "created", "data": p})
-		} else {
-			// 활성 상태 → 삭제 (토글 off)
-			repository.DB.Delete(&p)
-			c.JSON(http.StatusOK, gin.H{"action": "removed", "marathon_id": marathonID})
 		}
+		c.JSON(http.StatusCreated, gin.H{"data": p})
 		return
 	}
 
-	// 레코드 없음 → 새로 생성
-	p = models.MarathonParticipation{
-		UserID:     user.ID,
-		MarathonID: uint(marathonID),
-	}
+	p = models.MarathonParticipation{UserID: user.ID, MarathonID: uint(marathonID)}
 	if err := repository.DB.Create(&p).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"action": "created", "data": p})
+	c.JSON(http.StatusCreated, gin.H{"data": p})
+}
+
+func RemoveParticipation(c *gin.Context) {
+	user := GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
+		return
+	}
+	marathonID, err := strconv.ParseUint(c.Param("marathon_id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "잘못된 마라톤 ID"})
+		return
+	}
+
+	var p models.MarathonParticipation
+	if err := repository.DB.Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&p).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "참가 내역을 찾을 수 없습니다"})
+		return
+	}
+	repository.DB.Delete(&p)
+	c.JSON(http.StatusOK, gin.H{"marathon_id": marathonID})
 }
 
 func UpdateParticipationRecord(c *gin.Context) {

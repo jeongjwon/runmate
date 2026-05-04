@@ -73,18 +73,19 @@ async function toggleParticipation(marathonId, event) {
 
     pendingSet.add(marathonId);
     const isActive = !!participationMap[marathonId];
+
+    // 낙관적 UI 업데이트
     if (isActive) delete participationMap[marathonId];
     else          participationMap[marathonId] = true;
     updateParticipationBtn(marathonId);
 
     try {
         const res = await fetch(`/api/participations/${marathonId}`, {
-            method: 'POST',
+            method: isActive ? 'DELETE' : 'POST',
             credentials: 'same-origin',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
         });
         if (!res.ok) {
+            // 실패 시 롤백
             if (isActive) participationMap[marathonId] = true;
             else delete participationMap[marathonId];
             updateParticipationBtn(marathonId);
