@@ -40,9 +40,9 @@
             <option value="Full">풀코스</option>
         </select>
         {{if $loggedIn}}
-        <select id="filter-wish" class="input-dark sm:w-36">
+        <select id="filter-participation" class="input-dark sm:w-36">
             <option value="">전체 보기</option>
-            <option value="wished">⭐ 내 마라톤</option>
+            <option value="yes">⭐ 내 마라톤</option>
         </select>
         {{end}}
     </div>
@@ -54,53 +54,53 @@
 <script>
 const IS_LOGGED_IN = {{if $loggedIn}}true{{else}}false{{end}};
 let searchTimer = null;
-let wishMap = {};
+let participationMap = {};
 let lastMarathons = [];
-const wishPending = new Set();
+const pendingSet = new Set();
 
-async function loadWishes() {
+async function loadParticipations() {
     if (!IS_LOGGED_IN) return;
-    const res = await fetch('/api/wishes');
+    const res = await fetch('/api/participations');
     const { data } = await res.json();
-    wishMap = {};
-    (data || []).forEach(w => { wishMap[w.marathon_id] = w.status; });
+    participationMap = {};
+    (data || []).forEach(p => { participationMap[p.marathon_id] = true; });
 }
 
-async function toggleWish(marathonId, event) {
+async function toggleParticipation(marathonId, event) {
     event.stopPropagation();
     if (!IS_LOGGED_IN) { location.href = '/login'; return; }
-    if (wishPending.has(marathonId)) return;
+    if (pendingSet.has(marathonId)) return;
 
-    wishPending.add(marathonId);
-    const isActive = !!wishMap[marathonId];
-    if (isActive) delete wishMap[marathonId];
-    else          wishMap[marathonId] = 'wished';
-    updateWishBtn(marathonId);
+    pendingSet.add(marathonId);
+    const isActive = !!participationMap[marathonId];
+    if (isActive) delete participationMap[marathonId];
+    else          participationMap[marathonId] = true;
+    updateParticipationBtn(marathonId);
 
     try {
-        const res = await fetch(`/api/wishes/${marathonId}`, {
+        const res = await fetch(`/api/participations/${marathonId}`, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'wished' })
+            body: JSON.stringify({})
         });
         if (!res.ok) {
-            if (isActive) wishMap[marathonId] = 'wished';
-            else delete wishMap[marathonId];
-            updateWishBtn(marathonId);
+            if (isActive) participationMap[marathonId] = true;
+            else delete participationMap[marathonId];
+            updateParticipationBtn(marathonId);
         }
     } finally {
-        wishPending.delete(marathonId);
+        pendingSet.delete(marathonId);
     }
 
-    const fw = document.getElementById('filter-wish');
-    if (fw && fw.value) renderMarathons(lastMarathons);
+    const fp = document.getElementById('filter-participation');
+    if (fp && fp.value) renderMarathons(lastMarathons);
 }
 
-function updateWishBtn(marathonId) {
-    const btn = document.getElementById(`btn-wish-${marathonId}`);
+function updateParticipationBtn(marathonId) {
+    const btn = document.getElementById(`btn-participation-${marathonId}`);
     if (!btn) return;
-    const active = !!wishMap[marathonId];
+    const active = !!participationMap[marathonId];
     if (active) {
         btn.style.cssText = 'background-color:rgba(78,203,160,.12);border:1.5px solid rgba(78,203,160,.5);';
         btn.innerHTML = '<i class="fas fa-star" style="color:#4ECBA0;font-size:.9rem;"></i>';
@@ -168,8 +168,8 @@ async function loadMarathons() {
 function renderMarathons(marathons) {
     const container = document.getElementById('marathon-list');
     const countEl   = document.getElementById('result-count');
-    const fw        = document.getElementById('filter-wish');
-    const filtered  = (fw && fw.value) ? marathons.filter(m => !!wishMap[m.id]) : marathons;
+    const fp        = document.getElementById('filter-participation');
+    const filtered  = (fp && fp.value) ? marathons.filter(m => !!participationMap[m.id]) : marathons;
 
     countEl.textContent = `총 ${filtered.length}개 대회`;
 
@@ -187,25 +187,25 @@ function renderMarathons(marathons) {
         const categories = m.categories ? m.categories.split(',') : [];
         const isPast     = m.date < today;
         const fee        = m.entry_fee > 0 ? m.entry_fee.toLocaleString() + '원' : '미정';
-        const active     = !!wishMap[m.id];
+        const active     = !!participationMap[m.id];
 
         const statusBadge = isPast
             ? '<span class="badge-gray">종료</span>'
             : '<span class="badge-mint" style="background-color:rgba(78,203,160,.2);">모집중</span>';
 
-        const wishBtnStyle = active
+        const participationBtnStyle = active
             ? 'background-color:rgba(78,203,160,.15);border:1.5px solid rgba(78,203,160,.5);'
             : 'border:1.5px solid rgba(27,45,64,.15);background-color:rgba(27,45,64,.04);';
-        const wishIcon = active
+        const participationIcon = active
             ? '<i class="fas fa-star" style="color:#4ECBA0;font-size:.85rem;"></i>'
             : '<i class="far fa-star" style="color:#9AAAB8;font-size:.85rem;"></i>';
-        const wishBtn = IS_LOGGED_IN ? `
-            <button id="btn-wish-${m.id}"
-                onclick="toggleWish(${m.id}, event)"
+        const participationBtn = IS_LOGGED_IN ? `
+            <button id="btn-participation-${m.id}"
+                onclick="toggleParticipation(${m.id}, event)"
                 title="${active ? '참여 취소' : '참여'}"
-                style="${wishBtnStyle}"
+                style="${participationBtnStyle}"
                 class="w-8 h-8 flex items-center justify-center rounded-lg transition-colors shrink-0">
-                ${wishIcon}
+                ${participationIcon}
             </button>` : '';
 
         const officialLink = m.official_url
@@ -226,7 +226,7 @@ function renderMarathons(marathons) {
                         ${statusBadge}
                     </div>
                 </div>
-                ${wishBtn}
+                ${participationBtn}
             </div>
             <!-- 바디 -->
             <div class="px-4 py-3.5">
@@ -258,10 +258,10 @@ document.getElementById('search-input').addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(loadMarathons, 300);
 });
-const fw = document.getElementById('filter-wish');
-if (fw) fw.addEventListener('change', () => renderMarathons(lastMarathons));
+const fp = document.getElementById('filter-participation');
+if (fp) fp.addEventListener('change', () => renderMarathons(lastMarathons));
 
-loadWishes().then(() => {
+loadParticipations().then(() => {
     requestLocation();
     loadMarathons();
 });

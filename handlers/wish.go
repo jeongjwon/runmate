@@ -9,18 +9,18 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func GetWishes(c *gin.Context) {
+func GetParticipations(c *gin.Context) {
 	user := GetCurrentUser(c)
 	if user == nil {
 		c.JSON(http.StatusOK, gin.H{"data": []interface{}{}})
 		return
 	}
-	var wishes []models.MarathonWish
-	repository.DB.Preload("Marathon").Where("user_id = ?", user.ID).Order("created_at DESC").Find(&wishes)
-	c.JSON(http.StatusOK, gin.H{"data": wishes})
+	var participations []models.MarathonParticipation
+	repository.DB.Preload("Marathon").Where("user_id = ?", user.ID).Order("created_at DESC").Find(&participations)
+	c.JSON(http.StatusOK, gin.H{"data": participations})
 }
 
-func ToggleWish(c *gin.Context) {
+func ToggleParticipation(c *gin.Context) {
 	user := GetCurrentUser(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
@@ -33,46 +33,38 @@ func ToggleWish(c *gin.Context) {
 		return
 	}
 
-	var input struct {
-		Status string `json:"status" binding:"required"`
-	}
-	if err := c.ShouldBindJSON(&input); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
+	// body가 없어도 허용 (toggle이므로)
+	c.ShouldBindJSON(&struct{}{})
 
-	var wish models.MarathonWish
-	// Unscoped: 소프트 딜리트된 레코드도 포함해서 조회
-	result := repository.DB.Unscoped().Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&wish)
+	var p models.MarathonParticipation
+	result := repository.DB.Unscoped().Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&p)
 
 	if result.Error == nil {
-		if wish.DeletedAt.Valid {
+		if p.DeletedAt.Valid {
 			// 소프트 딜리트 상태 → 복원 (토글 on)
-			repository.DB.Unscoped().Model(&wish).Update("deleted_at", nil)
-			c.JSON(http.StatusCreated, gin.H{"action": "created", "data": wish})
+			repository.DB.Unscoped().Model(&p).Update("deleted_at", nil)
+			c.JSON(http.StatusCreated, gin.H{"action": "created", "data": p})
 		} else {
 			// 활성 상태 → 삭제 (토글 off)
-			repository.DB.Delete(&wish)
+			repository.DB.Delete(&p)
 			c.JSON(http.StatusOK, gin.H{"action": "removed", "marathon_id": marathonID})
 		}
 		return
 	}
 
 	// 레코드 없음 → 새로 생성
-	wish = models.MarathonWish{
+	p = models.MarathonParticipation{
 		UserID:     user.ID,
 		MarathonID: uint(marathonID),
-		Status:     "wished",
 	}
-	if err := repository.DB.Create(&wish).Error; err != nil {
+	if err := repository.DB.Create(&p).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(http.StatusCreated, gin.H{"action": "created", "data": wish})
+	c.JSON(http.StatusCreated, gin.H{"action": "created", "data": p})
 }
 
-// UpdateWishRecord 출전 종목과 완주 기록 저장
-func UpdateWishRecord(c *gin.Context) {
+func UpdateParticipationRecord(c *gin.Context) {
 	user := GetCurrentUser(c)
 	if user == nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
@@ -95,9 +87,9 @@ func UpdateWishRecord(c *gin.Context) {
 		return
 	}
 
-	var wish models.MarathonWish
-	if err := repository.DB.Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&wish).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "참여 마라톤을 찾을 수 없습니다"})
+	var p models.MarathonParticipation
+	if err := repository.DB.Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&p).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "참가 마라톤을 찾을 수 없습니다"})
 		return
 	}
 
@@ -112,7 +104,7 @@ func UpdateWishRecord(c *gin.Context) {
 		}
 	}
 
-	repository.DB.Model(&wish).Updates(updates)
-	repository.DB.Preload("Marathon").First(&wish, wish.ID)
-	c.JSON(http.StatusOK, gin.H{"data": wish, "message": "기록이 저장되었습니다"})
+	repository.DB.Model(&p).Updates(updates)
+	repository.DB.Preload("Marathon").First(&p, p.ID)
+	c.JSON(http.StatusOK, gin.H{"data": p, "message": "기록이 저장되었습니다"})
 }

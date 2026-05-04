@@ -17,6 +17,7 @@ func calcPace(distanceKm float64, durationSec int) string {
 	return fmt.Sprintf("%d'%02d\"", mins, secs)
 }
 
+// 주간 통계
 func GetWeeklyStats(userID uint) []models.WeeklyStats {
 	var stats []models.WeeklyStats
 
@@ -54,6 +55,7 @@ func GetWeeklyStats(userID uint) []models.WeeklyStats {
 	return stats
 }
 
+// 월간 통계
 func GetMonthlyStats(userID uint, year int) []models.MonthlyStats {
 	var stats []models.MonthlyStats
 
@@ -93,6 +95,7 @@ func GetMonthlyStats(userID uint, year int) []models.MonthlyStats {
 	return stats
 }
 
+// 연간 통계
 func GetYearlyStats(userID uint) []models.YearlyStats {
 	var stats []models.YearlyStats
 

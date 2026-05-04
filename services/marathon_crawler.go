@@ -29,6 +29,7 @@ type crawlTarget struct {
 }
 
 // roadrun.co.kr: marathon.pe.kr/schedule_index.html 프레임 내 실제 일정 DB (316개 대회)
+// 크롤링할 사이트 정보를 담는 구조체
 var crawlTargets = []crawlTarget{
 	{
 		Name:    "도로런",
@@ -40,18 +41,22 @@ var crawlTargets = []crawlTarget{
 	},
 }
 
+// 크롤링 전체 실행 함수
 func CrawlAndSyncMarathons() (*SyncResult, error) {
 	var allMarathons []models.Marathon
 	
 	var crawlErrors []string
 
+	// 크롤링 대상 for 문
 	for _, target := range crawlTargets {
+		// 페이지 HTML 가져와
 		content, err := fetchPage(target.URL, target.Charset, target.Method, target.Params)
 		if err != nil {
 			crawlErrors = append(crawlErrors, fmt.Sprintf("%s: %v", target.Name, err))
 			continue
 		}
 
+		// HTML 태그 제거 후 실제 텍스트만 뽑기
 		text := extractMainText(content)
 		if len([]rune(text)) < 50 {
 			crawlErrors = append(crawlErrors, fmt.Sprintf("%s: 본문 내용 없음", target.Name))
@@ -60,6 +65,7 @@ func CrawlAndSyncMarathons() (*SyncResult, error) {
 
 		var marathons []models.Marathon
 		if target.Parser == "roadrun" {
+			// 로드런 사이트는 정해진 패턴이 있어 직접 파싱
 			marathons = parseRoadRunSchedule(text)
 		} else {
 			// Claude를 사용하는 사이트는 8000자 제한 후 AI 파싱
@@ -120,6 +126,7 @@ var (
 	reCategoryLine = regexp.MustCompile(`(?i)풀|하프|full|half|\d+km|\d+k,|\d+k$|km,|,km`)
 )
 
+// 도로런 텍스트 > 마라톤 데이터로 파싱
 func parseRoadRunSchedule(text string) []models.Marathon {
 	lines := strings.Split(text, "\n")
 	var marathons []models.Marathon

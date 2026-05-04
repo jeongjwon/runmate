@@ -17,7 +17,7 @@ func InitDB() {
 	var err error
 	cfg := &gorm.Config{
 		Logger: logger.Default.LogMode(logger.Warn),
-	}
+	} // warn 로그만 출력 - SQL 로그 줄이기 위함
 
 	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
 		log.Println("PostgreSQL(Supabase)에 연결합니다")
@@ -36,9 +36,8 @@ func InitDB() {
 	err = DB.AutoMigrate(
 		&models.User{},
 		&models.Marathon{},
-		&models.Registration{},
 		&models.RunningRecord{},
-		&models.MarathonWish{},
+		&models.MarathonParticipation{},
 	)
 	if err != nil {
 		log.Fatal("DB 마이그레이션 실패:", err)

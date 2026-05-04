@@ -23,6 +23,7 @@ func init() {
 	gob.Register(uint(0))
 }
 
+// 세션 저장소
 var Store *sessions.CookieStore
 
 // TemplateData is passed to all HTML templates.
@@ -30,6 +31,7 @@ type TemplateData struct {
 	User *models.User
 }
 
+// 로그인 정보를 쿠키에 저장하는 설정
 func InitAuth() {
 	secret := os.Getenv("SESSION_SECRET")
 	if secret == "" {
@@ -38,7 +40,7 @@ func InitAuth() {
 	Store = sessions.NewCookieStore([]byte(secret))
 	Store.Options = &sessions.Options{
 		Path:     "/",
-		MaxAge:   86400 * 30,
+		MaxAge:   86400 * 30, // 로그인시 30일 유지
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 	}
@@ -55,6 +57,8 @@ func baseURL() string {
 	return "http://localhost:" + port
 }
 
+// OAuth 설정
+// 구글
 func googleConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
@@ -65,6 +69,7 @@ func googleConfig() *oauth2.Config {
 	}
 }
 
+// 카카오
 func kakaoConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     os.Getenv("KAKAO_CLIENT_ID"),
@@ -78,6 +83,7 @@ func kakaoConfig() *oauth2.Config {
 	}
 }
 
+// 네이버
 func naverConfig() *oauth2.Config {
 	return &oauth2.Config{
 		ClientID:     os.Getenv("NAVER_CLIENT_ID"),
@@ -124,6 +130,7 @@ func AuthMiddleware() gin.HandlerFunc {
 }
 
 // RequireAuth returns 401 if the request has no valid session (for API endpoints).
+// 로그인 체크 (API 사용시)
 func RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if _, exists := c.Get("currentUser"); !exists {
@@ -136,6 +143,7 @@ func RequireAuth() gin.HandlerFunc {
 }
 
 // RequireAuthPage redirects to /login for unauthenticated page requests.
+// 로그인 체크 (페이지 사용시)
 func RequireAuthPage() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if _, exists := c.Get("currentUser"); !exists {
@@ -148,6 +156,7 @@ func RequireAuthPage() gin.HandlerFunc {
 }
 
 // GetCurrentUser extracts the logged-in user from the Gin context.
+// 현재 로그인 유저 가져오기
 func GetCurrentUser(c *gin.Context) *models.User {
 	if user, exists := c.Get("currentUser"); exists {
 		return user.(*models.User)
@@ -156,7 +165,6 @@ func GetCurrentUser(c *gin.Context) *models.User {
 }
 
 // ── Login page ──────────────────────────────────────────────────────────────
-
 func LoginPage(c *gin.Context) {
 	// Rendered by main.go (needs template + TemplateData).
 	// This handler is a no-op; page rendering happens in the route closure.
@@ -189,11 +197,11 @@ func startOAuth(c *gin.Context, cfg *oauth2.Config) {
 	session, _ := Store.Get(c.Request, "runmate-session")
 	session.Values["oauth_state"] = state
 	session.Save(c.Request, c.Writer)
-	c.Redirect(http.StatusFound, cfg.AuthCodeURL(state))
+	c.Redirect(http.StatusFound, cfg.AuthCodeURL(state)) // 콜백 
 }
 
 // ── OAuth callbacks ──────────────────────────────────────────────────────────
-
+// 콜백 - 로그인 완료
 func GoogleCallback(c *gin.Context) {
 	handleCallback(c, "google", googleConfig(), fetchGoogleUser)
 }
@@ -210,6 +218,7 @@ func NaverCallback(c *gin.Context) {
 
 func Logout(c *gin.Context) {
 	session, _ := Store.Get(c.Request, "runmate-session")
+	// 쿠키 삭제
 	delete(session.Values, "user_id")
 	session.Options.MaxAge = -1
 	session.Save(c.Request, c.Writer)
@@ -256,6 +265,7 @@ func handleCallback(c *gin.Context, provider string, cfg *oauth2.Config, fetchUs
 	}
 	delete(session.Values, "oauth_state")
 
+	// 토큰 교환
 	token, err := cfg.Exchange(context.Background(), c.Query("code"))
 	if err != nil {
 		fmt.Printf("[%s] 토큰 교환 에러: %v\n", provider, err)
@@ -264,6 +274,7 @@ func handleCallback(c *gin.Context, provider string, cfg *oauth2.Config, fetchUs
 	}
 	fmt.Printf("[%s] 토큰 교환 성공\n", provider)
 
+	// 유저 정보 가져오기
 	info, err := fetchUser(token)
 	if err != nil || info.ID == "" {
 		fmt.Printf("[%s] 유저정보 에러: %v info=%+v\n", provider, err, info)
@@ -273,6 +284,7 @@ func handleCallback(c *gin.Context, provider string, cfg *oauth2.Config, fetchUs
 	fmt.Printf("[%s] 유저정보 성공 — id=%s name=%s\n", provider, info.ID, info.Name)
 
 	var user models.User
+	// 사용자 DB 생성 or 조회
 	if err := repository.DB.Where("provider = ? AND provider_id = ?", provider, info.ID).First(&user).Error; err != nil {
 		user = models.User{
 			Name:       info.Name,
@@ -290,11 +302,15 @@ func handleCallback(c *gin.Context, provider string, cfg *oauth2.Config, fetchUs
 		})
 	}
 
+	// 세션에 로그인 저장
 	session.Values["user_id"] = user.ID
 	session.Save(c.Request, c.Writer)
+
+	// 메인 페이지로 이동
 	c.Redirect(http.StatusFound, "/")
 }
 
+// 로그인 후 구글에서 정보 가져옴
 func fetchGoogleUser(token *oauth2.Token) (*oauthUserInfo, error) {
 	body, err := oauthGet("https://www.googleapis.com/oauth2/v3/userinfo", token.AccessToken)
 	if err != nil {
@@ -312,6 +328,7 @@ func fetchGoogleUser(token *oauth2.Token) (*oauthUserInfo, error) {
 	return &oauthUserInfo{ID: v.Sub, Name: v.Name, Email: v.Email, Picture: v.Picture}, nil
 }
 
+// 로그인 후 카카오에서 정보 가져옴
 func fetchKakaoUser(token *oauth2.Token) (*oauthUserInfo, error) {
 	body, err := oauthGet("https://kapi.kakao.com/v2/user/me", token.AccessToken)
 	fmt.Println("Kakao response:", string(body))
@@ -339,6 +356,7 @@ func fetchKakaoUser(token *oauth2.Token) (*oauthUserInfo, error) {
 	}, nil
 }
 
+// 로그인 후 네이버에서 정보 가져옴
 func fetchNaverUser(token *oauth2.Token) (*oauthUserInfo, error) {
 	body, err := oauthGet("https://openapi.naver.com/v1/nid/me", token.AccessToken)
 	if err != nil {

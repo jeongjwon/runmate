@@ -15,6 +15,13 @@ import (
 	"github.com/joho/godotenv"
 )
 
+func migrateWishToParticipation() {
+	migrator := repository.DB.Migrator()
+	if migrator.HasTable("marathon_wishes") && !migrator.HasTable("marathon_participations") {
+		repository.DB.Exec("ALTER TABLE marathon_wishes RENAME TO marathon_participations")
+	}
+}
+
 func migrateCityToSido() {
 	oldToNew := map[string]string{
 		"서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시",
@@ -80,12 +87,13 @@ func main() {
 		log.Println(".env 파일 없음 — 환경변수를 직접 사용합니다")
 	}
 
-	repository.InitDB()
-	migrateCityToSido()
-	handlers.InitAuth()
+	repository.InitDB()         // DB 연결
+	migrateWishToParticipation() // wishes → participations 테이블 rename
+	migrateCityToSido()          // 지역명 시도 단위 정규화
+	handlers.InitAuth()          // 로그인 세션 정보 저장
 
 	go func() {
-		result, err := services.CrawlAndSyncMarathons()
+		result, err := services.CrawlAndSyncMarathons() // 마라톤 데이터 크롤링
 		if err != nil {
 			log.Printf("자동 크롤링 실패: %v", err)
 		} else {
@@ -93,14 +101,15 @@ func main() {
 		}
 	}()
 
-	r := gin.Default()
+	r := gin.Default() // gin 서버 생성 (r이 모든 주소 관리)
 	r.SetFuncMap(funcMap)
-	r.Static("/static", "./static")
+	r.Static("/static", "./static") // 정적 파일 연결 (파비콘, css, js ,,,)
 
 	// ── 인증 미들웨어 (모든 요청에 적용: 세션에서 유저 로드) ──────────────────
 	r.Use(handlers.AuthMiddleware())
 
 	// ── 인증 라우트 ───────────────────────────────────────────────────────────
+	// 소셜 로그인 (구글,카카오,네이버)
 	r.GET("/login", func(c *gin.Context) {
 		renderPage(c, "templates/layout.html", "templates/login.html")
 	})
@@ -116,18 +125,24 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		renderPage(c, "templates/layout.html", "templates/marathons.html")
 	})
+	// 마라톤 목록
 	r.GET("/marathons", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/")
 	})
 
 	// ── 페이지 라우트 (로그인 필요) ───────────────────────────────────────────
-	r.GET("/registrations", handlers.RequireAuthPage(), func(c *gin.Context) {
+	// 참가 신청 페이지
+	r.GET("/participations", handlers.RequireAuthPage(), func(c *gin.Context) {
 		renderPage(c, "templates/layout.html", "templates/registrations.html")
 	})
+	r.GET("/registrations", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/participations")
+	})
+	// 기록 페이지
 	r.GET("/records", handlers.RequireAuthPage(), func(c *gin.Context) {
 		renderPage(c, "templates/layout.html", "templates/records.html")
 	})
-
+	// 통계 페이지
 	r.GET("/stats", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/records")
 	})
@@ -145,14 +160,9 @@ func main() {
 		api.POST("/marathons/crawl", handlers.CrawlMarathons)
 
 		// 참여 마라톤
-		api.GET("/wishes", handlers.GetWishes)
-		api.POST("/wishes/:marathon_id", handlers.RequireAuth(), handlers.ToggleWish)
-		api.PUT("/wishes/:marathon_id/record", handlers.RequireAuth(), handlers.UpdateWishRecord)
-
-		// 참가 신청 (목록은 로그인 사용자 기준, 변경은 인증 필요)
-		api.GET("/registrations", handlers.GetRegistrations)
-		api.POST("/registrations", handlers.RequireAuth(), handlers.CreateRegistration)
-		api.DELETE("/registrations/:id", handlers.RequireAuth(), handlers.CancelRegistration)
+		api.GET("/participations", handlers.GetParticipations)
+		api.POST("/participations/:marathon_id", handlers.RequireAuth(), handlers.ToggleParticipation)
+		api.PUT("/participations/:marathon_id/record", handlers.RequireAuth(), handlers.UpdateParticipationRecord)
 
 		// 러닝 기록 (인증 필요)
 		api.GET("/records", handlers.GetRecords)

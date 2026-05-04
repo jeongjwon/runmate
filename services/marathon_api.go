@@ -48,6 +48,7 @@ func SyncMarathonsFromAPI() (*SyncResult, error) {
 			"예: export MARATHON_API_KEY=your_service_key_here")
 	}
 
+	// 공공데이터 API 호출
 	url := fmt.Sprintf("%s?serviceKey=%s&page=1&perPage=100", publicDataAPIURL, apiKey)
 	resp, err := http.Get(url)
 	if err != nil {

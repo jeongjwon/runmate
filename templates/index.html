@@ -69,7 +69,7 @@
 async function loadSummary() {
     const [marathonsRes, regsRes, recordsRes] = await Promise.all([
         fetch('/api/marathons'),
-        fetch('/api/registrations'),
+        fetch('/api/participations'),
         fetch('/api/records')
     ]);
     const marathons = await marathonsRes.json();
@@ -77,7 +77,7 @@ async function loadSummary() {
     const records = await recordsRes.json();
 
     document.getElementById('total-marathons').textContent = marathons.data?.length || 0;
-    document.getElementById('my-registrations').textContent = (regs.data || []).filter(r => r.status === 'registered').length;
+    document.getElementById('my-registrations').textContent = (regs.data || []).length;
     document.getElementById('total-runs').textContent = records.data?.length || 0;
     const totalDist = (records.data || []).reduce((sum, r) => sum + r.distance, 0);
     document.getElementById('total-distance').textContent = totalDist.toFixed(1);
