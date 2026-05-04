@@ -1,0 +1,17 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/runmate ."
+  bin = "./tmp/runmate"
+  delay = 500
+  exclude_dir = ["tmp", "memory"]
+  include_ext = ["go", "html", "env"]
+  kill_delay = "0s"
+
+[log]
+  time = false
+
+[color]
+  build = "yellow"
+  runner = "green"

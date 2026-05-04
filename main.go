@@ -55,6 +55,7 @@ func main() {
 
 	r := gin.Default()
 	r.SetFuncMap(funcMap)
+	r.Static("/static", "./static")
 
 	// ── 인증 미들웨어 (모든 요청에 적용: 세션에서 유저 로드) ──────────────────
 	r.Use(handlers.AuthMiddleware())
@@ -73,10 +74,10 @@ func main() {
 
 	// ── 페이지 라우트 (공개) ──────────────────────────────────────────────────
 	r.GET("/", func(c *gin.Context) {
-		renderPage(c, "templates/layout.html", "templates/index.html")
+		renderPage(c, "templates/layout.html", "templates/marathons.html")
 	})
 	r.GET("/marathons", func(c *gin.Context) {
-		renderPage(c, "templates/layout.html", "templates/marathons.html")
+		c.Redirect(http.StatusMovedPermanently, "/")
 	})
 
 	// ── 페이지 라우트 (로그인 필요) ───────────────────────────────────────────
@@ -102,6 +103,11 @@ func main() {
 		api.GET("/marathons/:id", handlers.GetMarathon)
 		api.POST("/marathons/sync", handlers.SyncMarathons)
 		api.POST("/marathons/crawl", handlers.CrawlMarathons)
+
+		// 참여 마라톤
+		api.GET("/wishes", handlers.GetWishes)
+		api.POST("/wishes/:marathon_id", handlers.RequireAuth(), handlers.ToggleWish)
+		api.PUT("/wishes/:marathon_id/record", handlers.RequireAuth(), handlers.UpdateWishRecord)
 
 		// 참가 신청 (목록은 로그인 사용자 기준, 변경은 인증 필요)
 		api.GET("/registrations", handlers.GetRegistrations)

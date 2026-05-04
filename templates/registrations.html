@@ -1,74 +1,185 @@
 {{template "layout.html" .}}
 {{define "content"}}
 <div class="mb-6 flex items-center justify-between">
-    <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-ticket text-orange-500 mr-2"></i>내 마라톤 신청</h1>
+    <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-star text-yellow-400 mr-2"></i>내 마라톤</h1>
 </div>
 
-<div id="reg-list" class="space-y-4"></div>
+<div id="wish-list" class="space-y-4"></div>
+
+<!-- 기록 입력 모달 -->
+<div id="record-modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-xl">
+        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
+            <h2 class="text-lg font-bold text-gray-800">출전 기록 입력</h2>
+            <button onclick="closeRecordModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+            <p class="text-orange-600 font-semibold" id="record-marathon-name"></p>
+            <input type="hidden" id="record-marathon-id">
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">출전 종목</label>
+                <select id="record-category" class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <option value="">선택 안함</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">완주 기록 (시:분:초)</label>
+                <div class="flex gap-1 items-center">
+                    <input id="rec-h" type="number" min="0" max="23" placeholder="0"
+                        class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <span class="text-gray-400 font-bold">:</span>
+                    <input id="rec-m" type="number" min="0" max="59" placeholder="00"
+                        class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300">
+                    <span class="text-gray-400 font-bold">:</span>
+                    <input id="rec-s" type="number" min="0" max="59" placeholder="00"
+                        class="w-full border border-gray-200 rounded-lg px-2 py-2 text-sm text-center focus:outline-none focus:ring-2 focus:ring-orange-300">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">메모</label>
+                <textarea id="record-notes" rows="2" placeholder="날씨, 컨디션, 소감 등"
+                    class="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300 resize-none"></textarea>
+            </div>
+        </div>
+        <div class="p-6 pt-0 flex gap-3">
+            <button onclick="closeRecordModal()" class="flex-1 border border-gray-200 rounded-lg py-2 text-gray-600 hover:bg-gray-50 transition-colors">취소</button>
+            <button onclick="saveRecord()" class="flex-1 bg-orange-500 text-white rounded-lg py-2 font-semibold hover:bg-orange-600 transition-colors">저장</button>
+        </div>
+    </div>
+</div>
 
 <script>
-const statusLabels = { registered: '신청완료', cancelled: '취소됨', completed: '완료' };
-const statusColors = {
-    registered: 'bg-green-100 text-green-700',
-    cancelled: 'bg-gray-100 text-gray-500',
-    completed: 'bg-blue-100 text-blue-700'
-};
+const categoryLabels = { '5K':'5K', '10K':'10K', 'Half':'하프 (21.1km)', 'Full':'풀코스 (42.195km)' };
 
-async function loadRegistrations() {
-    const res = await fetch('/api/registrations');
+async function loadWishes() {
+    const res = await fetch('/api/wishes');
     const { data } = await res.json();
-    renderList(data || []);
+    renderWishes(data || []);
 }
 
-function renderList(regs) {
-    const container = document.getElementById('reg-list');
-    if (!regs.length) {
+function formatTime(sec) {
+    if (!sec) return null;
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2,'0')}`;
+}
+
+function renderWishes(wishes) {
+    const container = document.getElementById('wish-list');
+    if (!wishes.length) {
         container.innerHTML = `
         <div class="text-center py-20 text-gray-400">
-            <i class="fas fa-ticket text-5xl mb-4 block"></i>
-            <p class="text-lg">아직 신청한 마라톤이 없습니다.</p>
-            <a href="/marathons" class="mt-4 inline-block bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors">
+            <i class="fas fa-star text-5xl mb-4 block text-gray-200"></i>
+            <p class="text-lg">참여한 마라톤이 없습니다.</p>
+            <a href="/" class="mt-4 inline-block bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600 transition-colors">
                 마라톤 보러 가기
             </a>
         </div>`;
         return;
     }
-    container.innerHTML = regs.map(r => `
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 flex items-center justify-between card-hover ${r.status === 'cancelled' ? 'opacity-60' : ''}">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center text-orange-500 text-xl">
-                <i class="fas fa-running"></i>
+
+    const today = new Date().toISOString().split('T')[0];
+    container.innerHTML = wishes.map(w => {
+        const m    = w.marathon || {};
+        const time = formatTime(w.finish_time);
+
+        return `
+        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 card-hover">
+            <div class="flex items-start justify-between gap-4">
+                <div class="flex items-center gap-4 flex-1 min-w-0">
+                    <div class="w-12 h-12 bg-yellow-50 rounded-full flex items-center justify-center shrink-0">
+                        <i class="fas fa-star text-yellow-400 text-xl"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="font-bold text-gray-800 truncate">${m.name || '-'}</h3>
+                        <p class="text-sm text-gray-500 mt-0.5">
+                            <span class="mr-3"><i class="fas fa-calendar mr-1"></i>${m.date || '-'}</span>
+                            <span><i class="fas fa-map-marker-alt mr-1"></i>${m.location || '-'}</span>
+                        </p>
+
+                        ${w.category || time ? `
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            ${w.category ? `<span class="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">${categoryLabels[w.category] || w.category}</span>` : ''}
+                            ${time ? `<span class="bg-blue-50 text-blue-600 text-xs px-2 py-1 rounded-full font-medium"><i class="fas fa-stopwatch mr-1"></i>${time}</span>` : ''}
+                            ${w.race_notes ? `<span class="text-xs text-gray-400 self-center truncate max-w-[180px]">${w.race_notes}</span>` : ''}
+                        </div>` : `
+                        <p class="text-xs text-gray-400 mt-1.5">출전 기록이 없습니다</p>`}
+                    </div>
+                </div>
+                <div class="flex flex-col gap-2 shrink-0">
+                    <button onclick="openRecordModal(${w.marathon_id}, '${(m.name||'').replace(/'/g,"\\'")}', '${m.categories||''}')"
+                        class="text-sm border border-orange-200 text-orange-500 hover:bg-orange-50 rounded-lg px-3 py-1.5 font-medium transition-colors whitespace-nowrap">
+                        <i class="fas fa-pen mr-1"></i>기록 ${w.category || w.finish_time ? '수정' : '입력'}
+                    </button>
+                    <button onclick="removeWish(${w.marathon_id})"
+                        class="text-xs border border-gray-200 text-gray-400 hover:bg-gray-50 rounded-lg px-3 py-1.5 transition-colors">
+                        목록에서 제거
+                    </button>
+                </div>
             </div>
-            <div>
-                <h3 class="font-bold text-gray-800">${r.marathon?.name || '마라톤 ' + r.marathon_id}</h3>
-                <p class="text-sm text-gray-500 mt-0.5">
-                    <span class="mr-3"><i class="fas fa-calendar mr-1"></i>${r.marathon?.date || '-'}</span>
-                    <span class="mr-3"><i class="fas fa-map-marker-alt mr-1"></i>${r.marathon?.location || '-'}</span>
-                    <span class="mr-3"><i class="fas fa-person-running mr-1"></i>${r.runner_name}</span>
-                    <span><i class="fas fa-route mr-1"></i>${r.category}</span>
-                </p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3">
-            <span class="px-3 py-1 rounded-full text-sm font-medium ${statusColors[r.status] || 'bg-gray-100 text-gray-500'}">
-                ${statusLabels[r.status] || r.status}
-            </span>
-            ${r.status === 'registered' ? `
-            <button onclick="cancelRegistration(${r.id})" class="text-red-400 hover:text-red-600 transition-colors text-sm border border-red-200 hover:border-red-400 rounded-lg px-3 py-1">
-                취소
-            </button>` : ''}
-        </div>
-    </div>`).join('');
+        </div>`;
+    }).join('');
 }
 
-async function cancelRegistration(id) {
-    if (!confirm('참가 신청을 취소하시겠습니까?')) return;
-    const res = await fetch('/api/registrations/' + id, { method: 'DELETE' });
+async function removeWish(marathonId) {
+    if (!confirm('내 마라톤 목록에서 제거하시겠습니까?')) return;
+    await fetch(`/api/wishes/${marathonId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'wished' })
+    });
+    loadWishes();
+}
+
+function openRecordModal(marathonId, name, categories) {
+    document.getElementById('record-marathon-id').value = marathonId;
+    document.getElementById('record-marathon-name').textContent = name;
+
+    const select = document.getElementById('record-category');
+    select.innerHTML = '<option value="">선택 안함</option>' +
+        (categories || '').split(',').filter(Boolean).map(cat =>
+            `<option value="${cat}">${categoryLabels[cat] || cat}</option>`
+        ).join('');
+
+    document.getElementById('rec-h').value = '';
+    document.getElementById('rec-m').value = '';
+    document.getElementById('rec-s').value = '';
+    document.getElementById('record-notes').value = '';
+    document.getElementById('record-modal').classList.remove('hidden');
+}
+
+function closeRecordModal() {
+    document.getElementById('record-modal').classList.add('hidden');
+}
+
+async function saveRecord() {
+    const marathonId = document.getElementById('record-marathon-id').value;
+    const category   = document.getElementById('record-category').value;
+    const h = parseInt(document.getElementById('rec-h').value) || 0;
+    const m = parseInt(document.getElementById('rec-m').value) || 0;
+    const s = parseInt(document.getElementById('rec-s').value) || 0;
+    const finishTime = h || m || s ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : '';
+    const notes      = document.getElementById('record-notes').value;
+
+    const res = await fetch(`/api/wishes/${marathonId}/record`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category, finish_time: finishTime, race_notes: notes })
+    });
     const data = await res.json();
-    alert(data.message);
-    loadRegistrations();
+    if (res.ok) { closeRecordModal(); loadWishes(); }
+    else        { alert(data.error); }
 }
 
-loadRegistrations();
+document.getElementById('record-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeRecordModal();
+});
+
+loadWishes();
 </script>
 {{end}}

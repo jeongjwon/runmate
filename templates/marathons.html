@@ -1,14 +1,11 @@
 {{template "layout.html" .}}
 {{define "content"}}
 {{$loggedIn := ne .User nil}}
+
 <div class="mb-6 flex flex-col gap-4">
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 class="text-2xl font-bold text-gray-800"><i class="fas fa-flag-checkered text-orange-500 mr-2"></i>마라톤 일정</h1>
-        <div id="crawl-status" class="hidden text-sm text-orange-500 flex items-center gap-1">
-            <i class="fas fa-sync-alt fa-spin"></i> 최신 일정 불러오는 중...
-        </div>
     </div>
-    <!-- 검색 + 필터 -->
     <div class="flex flex-col md:flex-row gap-2">
         <div class="relative flex-1">
             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
@@ -25,97 +22,137 @@
             <option value="Half">하프</option>
             <option value="Full">풀코스</option>
         </select>
+        {{if $loggedIn}}
+        <select id="filter-wish" class="border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-300">
+            <option value="">전체 보기</option>
+            <option value="wished">⭐ 참여</option>
+        </select>
+        {{end}}
     </div>
-    <!-- 결과 수 -->
     <p id="result-count" class="text-sm text-gray-400"></p>
 </div>
 
 <div id="marathon-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-5"></div>
 
-<!-- 참가 신청 모달 -->
-<div id="modal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl w-full max-w-md shadow-xl">
-        <div class="p-6 border-b border-gray-100 flex justify-between items-center">
-            <h2 class="text-lg font-bold text-gray-800">참가 신청</h2>
-            <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl"><i class="fas fa-times"></i></button>
-        </div>
-        <div class="p-6">
-            <p class="text-orange-600 font-semibold mb-4" id="modal-marathon-name"></p>
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">이름 *</label>
-                    <input id="reg-name" type="text" placeholder="홍길동" class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">이메일</label>
-                    <input id="reg-email" type="email" placeholder="example@email.com" class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">종목 *</label>
-                    <select id="reg-category" class="w-full border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-300">
-                    </select>
-                </div>
-            </div>
-        </div>
-        <div class="p-6 pt-0 flex gap-3">
-            <button onclick="closeModal()" class="flex-1 border border-gray-200 rounded-lg py-2 text-gray-600 hover:bg-gray-50 transition-colors">취소</button>
-            <button onclick="submitRegistration()" class="flex-1 bg-orange-500 text-white rounded-lg py-2 font-semibold hover:bg-orange-600 transition-colors">신청하기</button>
-        </div>
-    </div>
-</div>
-
 <script>
 const IS_LOGGED_IN = {{if $loggedIn}}true{{else}}false{{end}};
-let selectedMarathonId = null;
 let searchTimer = null;
+let wishMap = {};
+let lastMarathons = [];
+const wishPending = new Set(); // 진행 중인 요청 중복 방지
 
-const categoryLabels = { '5K': '5K', '10K': '10K', 'Half': '하프 (21.1km)', 'Full': '풀코스 (42.195km)' };
+// ── 위시 로드 ─────────────────────────────────────────────────────────────────
+async function loadWishes() {
+    if (!IS_LOGGED_IN) return;
+    const res = await fetch('/api/wishes');
+    const { data } = await res.json();
+    wishMap = {};
+    (data || []).forEach(w => { wishMap[w.marathon_id] = w.status; });
+}
 
+async function toggleWish(marathonId, event) {
+    event.stopPropagation();
+    if (!IS_LOGGED_IN) { location.href = '/login'; return; }
+    if (wishPending.has(marathonId)) return; // 진행 중이면 무시
+
+    wishPending.add(marathonId);
+    const isActive = !!wishMap[marathonId];
+
+    // 낙관적 UI 업데이트 (요청 전 미리 반영)
+    if (isActive) delete wishMap[marathonId];
+    else          wishMap[marathonId] = 'wished';
+    updateWishBtn(marathonId);
+
+    try {
+        await fetch(`/api/wishes/${marathonId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'wished' })
+        });
+    } finally {
+        wishPending.delete(marathonId);
+    }
+
+    const filterWish = document.getElementById('filter-wish');
+    if (filterWish && filterWish.value) renderMarathons(lastMarathons);
+}
+
+function updateWishBtn(marathonId) {
+    const btn = document.getElementById(`btn-wish-${marathonId}`);
+    if (!btn) return;
+    const active = !!wishMap[marathonId];
+    btn.innerHTML = active
+        ? '<i class="fas fa-star text-yellow-400"></i>'
+        : '<i class="far fa-star text-gray-300"></i>';
+    btn.title = active ? '참여 취소' : '참여';
+    btn.className = `w-8 h-8 flex items-center justify-center rounded-lg border transition-colors ${active ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 hover:border-yellow-300'}`;
+}
+
+// ── 마라톤 로드 ───────────────────────────────────────────────────────────────
 async function loadCities() {
     const res = await fetch('/api/marathons/cities');
     const { data } = await res.json();
     const select = document.getElementById('filter-city');
     (data || []).forEach(city => {
         const opt = document.createElement('option');
-        opt.value = city;
-        opt.textContent = city;
+        opt.value = city; opt.textContent = city;
         select.appendChild(opt);
     });
 }
 
 async function loadMarathons() {
-    const city = document.getElementById('filter-city').value;
+    const city     = document.getElementById('filter-city').value;
     const category = document.getElementById('filter-category').value;
-    const search = document.getElementById('search-input').value.trim();
+    const search   = document.getElementById('search-input').value.trim();
 
     const params = new URLSearchParams();
-    if (city) params.set('city', city);
+    if (city)     params.set('city', city);
     if (category) params.set('category', category);
-    if (search) params.set('search', search);
+    if (search)   params.set('search', search);
 
-    const url = '/api/marathons' + (params.toString() ? '?' + params.toString() : '');
-    const res = await fetch(url);
+    const res = await fetch('/api/marathons' + (params.toString() ? '?' + params : ''));
     const { data } = await res.json();
-    renderMarathons(data || []);
+    lastMarathons = data || [];
+    renderMarathons(lastMarathons);
 }
 
 function renderMarathons(marathons) {
     const container = document.getElementById('marathon-list');
-    const countEl = document.getElementById('result-count');
-    countEl.textContent = `총 ${marathons.length}개 대회`;
+    const countEl   = document.getElementById('result-count');
 
-    if (!marathons.length) {
+    const filterWish = document.getElementById('filter-wish');
+    const wishFilter = filterWish ? filterWish.value : '';
+    const filtered   = wishFilter ? marathons.filter(m => !!wishMap[m.id]) : marathons;
+
+    countEl.textContent = `총 ${filtered.length}개 대회`;
+
+    if (!filtered.length) {
         container.innerHTML = '<p class="text-gray-400 col-span-3 text-center py-12">조건에 맞는 마라톤이 없습니다.</p>';
         return;
     }
+
     const today = new Date().toISOString().split('T')[0];
-    container.innerHTML = marathons.map(m => {
+    container.innerHTML = filtered.map(m => {
         const categories = m.categories ? m.categories.split(',') : [];
-        const isPast = m.date < today;
-        const fee = m.entry_fee > 0 ? m.entry_fee.toLocaleString() + '원' : '미정';
+        const isPast     = m.date < today;
+        const fee        = m.entry_fee > 0 ? m.entry_fee.toLocaleString() + '원' : '미정';
+        const active     = !!wishMap[m.id];
+
         const officialLink = m.official_url
-            ? `<a href="${m.official_url}" target="_blank" class="flex-1 border border-gray-200 rounded-lg py-2 text-center text-sm text-gray-600 hover:bg-gray-50 transition-colors"><i class="fas fa-external-link-alt mr-1"></i>공식 홈페이지</a>`
-            : `<span class="flex-1 border border-gray-100 rounded-lg py-2 text-center text-sm text-gray-300">홈페이지 없음</span>`;
+            ? `<a href="${m.official_url}" target="_blank"
+                class="flex items-center justify-center gap-1 flex-1 border border-gray-200 rounded-lg py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                <i class="fas fa-external-link-alt"></i> 공식 홈페이지
+               </a>`
+            : '';
+
+        const wishBtn = IS_LOGGED_IN ? `
+            <button id="btn-wish-${m.id}"
+                onclick="toggleWish(${m.id}, event)"
+                title="${active ? '참여 취소' : '참여'}"
+                class="w-8 h-8 flex items-center justify-center rounded-lg border transition-colors shrink-0 ${active ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200 hover:border-yellow-300'}">
+                ${active ? '<i class="fas fa-star text-yellow-400"></i>' : '<i class="far fa-star text-gray-300"></i>'}
+            </button>` : '';
+
         return `
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 card-hover overflow-hidden">
             <div class="bg-gradient-to-r from-orange-400 to-rose-400 px-5 py-4">
@@ -137,67 +174,25 @@ function renderMarathons(marathons) {
                     ${categories.map(cat => `<span class="bg-orange-50 text-orange-600 text-xs px-2 py-1 rounded-full font-medium">${cat}</span>`).join('')}
                 </div>
                 ${m.description ? `<p class="text-xs text-gray-400 mb-4 line-clamp-2">${m.description}</p>` : ''}
-                <div class="flex gap-2">
+                <div class="flex gap-2 items-center">
                     ${officialLink}
-                    ${!isPast
-                        ? IS_LOGGED_IN
-                            ? `<button onclick="openModal(${m.id}, '${m.name.replace(/'/g, "\\'")}', '${m.categories}')" class="flex-1 bg-orange-500 text-white rounded-lg py-2 text-sm font-semibold hover:bg-orange-600 transition-colors">참가 신청</button>`
-                            : `<a href="/login" class="flex-1 border border-orange-300 text-orange-500 rounded-lg py-2 text-sm font-semibold hover:bg-orange-50 transition-colors text-center">로그인 후 신청</a>`
-                        : ''}
+                    ${wishBtn}
                 </div>
             </div>
         </div>`;
     }).join('');
 }
 
-function openModal(id, name, categories) {
-    selectedMarathonId = id;
-    document.getElementById('modal-marathon-name').textContent = name;
-    const select = document.getElementById('reg-category');
-    select.innerHTML = (categories || '').split(',').map(cat =>
-        `<option value="${cat}">${categoryLabels[cat] || cat}</option>`
-    ).join('');
-    document.getElementById('modal').classList.remove('hidden');
-}
-
-function closeModal() {
-    document.getElementById('modal').classList.add('hidden');
-    document.getElementById('reg-name').value = '';
-    document.getElementById('reg-email').value = '';
-    selectedMarathonId = null;
-}
-
-async function submitRegistration() {
-    const name = document.getElementById('reg-name').value.trim();
-    const email = document.getElementById('reg-email').value.trim();
-    const category = document.getElementById('reg-category').value;
-
-    if (!name) { alert('이름을 입력해주세요.'); return; }
-
-    const res = await fetch('/api/registrations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ marathon_id: selectedMarathonId, runner_name: name, email, category })
-    });
-    const data = await res.json();
-    if (res.ok) {
-        alert(data.message);
-        closeModal();
-    } else {
-        alert(data.error);
-    }
-}
-
+// ── 이벤트 ───────────────────────────────────────────────────────────────────
 document.getElementById('filter-city').addEventListener('change', loadMarathons);
 document.getElementById('filter-category').addEventListener('change', loadMarathons);
 document.getElementById('search-input').addEventListener('input', () => {
     clearTimeout(searchTimer);
     searchTimer = setTimeout(loadMarathons, 300);
 });
-document.getElementById('modal').addEventListener('click', function(e) {
-    if (e.target === this) closeModal();
-});
+const filterWishEl = document.getElementById('filter-wish');
+if (filterWishEl) filterWishEl.addEventListener('change', () => renderMarathons(lastMarathons));
 
-loadCities().then(() => loadMarathons());
+Promise.all([loadCities(), loadWishes()]).then(() => loadMarathons());
 </script>
 {{end}}

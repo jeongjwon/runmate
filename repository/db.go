@@ -21,7 +21,10 @@ func InitDB() {
 
 	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
 		log.Println("PostgreSQL(Supabase)에 연결합니다")
-		DB, err = gorm.Open(postgres.Open(dsn), cfg)
+		DB, err = gorm.Open(postgres.New(postgres.Config{
+			DSN:                  dsn,
+			PreferSimpleProtocol: true,
+		}), cfg)
 	} else {
 		log.Println("SQLite(로컬)에 연결합니다")
 		DB, err = gorm.Open(sqlite.Open("runmate.db"), cfg)
@@ -35,6 +38,7 @@ func InitDB() {
 		&models.Marathon{},
 		&models.Registration{},
 		&models.RunningRecord{},
+		&models.MarathonWish{},
 	)
 	if err != nil {
 		log.Fatal("DB 마이그레이션 실패:", err)
