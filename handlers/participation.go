@@ -32,14 +32,9 @@ func AddParticipation(c *gin.Context) {
 		return
 	}
 
+	// 이미 존재하면 그대로 반환 (중복 추가 방지)
 	var p models.MarathonParticipation
-	result := repository.DB.Unscoped().Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&p)
-
-	if result.Error == nil {
-		if p.DeletedAt.Valid {
-			// 소프트 딜리트 상태 → 복원
-			repository.DB.Unscoped().Model(&p).Update("deleted_at", nil)
-		}
+	if err := repository.DB.Where("user_id = ? AND marathon_id = ?", user.ID, uint(marathonID)).First(&p).Error; err == nil {
 		c.JSON(http.StatusCreated, gin.H{"data": p})
 		return
 	}
@@ -69,7 +64,8 @@ func RemoveParticipation(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "참가 내역을 찾을 수 없습니다"})
 		return
 	}
-	repository.DB.Delete(&p)
+	// 하드 딜리트: 기록(category, finish_time 등)까지 완전 삭제
+	repository.DB.Unscoped().Delete(&p)
 	c.JSON(http.StatusOK, gin.H{"marathon_id": marathonID})
 }
 
