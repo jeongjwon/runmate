@@ -7,12 +7,51 @@ import (
 	"net/http"
 	"os"
 	"runmate/handlers"
+	"runmate/models"
 	"runmate/repository"
 	"runmate/services"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+func migrateCityToSido() {
+	oldToNew := map[string]string{
+		"서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시",
+		"인천": "인천광역시", "광주": "광주광역시", "대전": "대전광역시",
+		"울산": "울산광역시", "세종": "세종특별자치도", "제주": "제주특별자치도",
+		"경기": "경기도", "강원": "강원특별자치도",
+		"충북": "충청북도", "충남": "충청남도",
+		"전북": "전라북도", "전남": "전라남도",
+		"경북": "경상북도", "경남": "경상남도",
+		"춘천": "강원특별자치도", "원주": "강원특별자치도", "강릉": "강원특별자치도",
+		"태백": "강원특별자치도", "속초": "강원특별자치도", "삼척": "강원특별자치도",
+		"경주": "경상북도", "포항": "경상북도", "안동": "경상북도", "구미": "경상북도",
+		"창원": "경상남도", "진주": "경상남도", "통영": "경상남도",
+		"거제": "경상남도", "김해": "경상남도", "양산": "경상남도",
+		"전주": "전라북도", "군산": "전라북도", "익산": "전라북도",
+		"목포": "전라남도", "여수": "전라남도", "순천": "전라남도",
+		"나주": "전라남도", "광양": "전라남도",
+		"청주": "충청북도", "충주": "충청북도", "제천": "충청북도",
+		"천안": "충청남도", "아산": "충청남도", "공주": "충청남도",
+		"수원": "경기도", "고양": "경기도", "성남": "경기도",
+		"화성": "경기도", "용인": "경기도", "파주": "경기도",
+	}
+
+	var marathons []models.Marathon
+	repository.DB.Find(&marathons)
+	for _, m := range marathons {
+		newCity := services.ExtractCity(m.Location)
+		if newCity == "" {
+			if mapped, ok := oldToNew[m.City]; ok {
+				newCity = mapped
+			}
+		}
+		if newCity != "" && newCity != m.City {
+			repository.DB.Model(&m).Update("city", newCity)
+		}
+	}
+}
 
 var funcMap = template.FuncMap{
 	"json": func(v interface{}) template.JS {
@@ -42,6 +81,7 @@ func main() {
 	}
 
 	repository.InitDB()
+	migrateCityToSido()
 	handlers.InitAuth()
 
 	go func() {

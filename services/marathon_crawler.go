@@ -196,7 +196,7 @@ func parseRoadRunSchedule(text string) []models.Marathon {
 			Name:       name,
 			Date:       fullDate,
 			Location:   location,
-			City:       extractCity(location),
+			City:       ExtractCity(location),
 			Categories: categories,
 			IsActive:   true,
 		})

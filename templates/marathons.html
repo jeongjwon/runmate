@@ -12,8 +12,25 @@
             <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs" style="color:var(--text3);"></i>
             <input id="search-input" type="text" placeholder="대회명 또는 장소 검색" class="input-dark pl-8">
         </div>
-        <select id="filter-city" class="input-dark sm:w-36">
-            <option value="">전체 지역</option>
+        <select id="filter-city" class="input-dark sm:w-40">
+            <option value="">전국</option>
+            <option value="서울특별시">서울특별시</option>
+            <option value="부산광역시">부산광역시</option>
+            <option value="대구광역시">대구광역시</option>
+            <option value="인천광역시">인천광역시</option>
+            <option value="광주광역시">광주광역시</option>
+            <option value="대전광역시">대전광역시</option>
+            <option value="울산광역시">울산광역시</option>
+            <option value="세종특별자치도">세종특별자치도</option>
+            <option value="경기도">경기도</option>
+            <option value="강원특별자치도">강원특별자치도</option>
+            <option value="충청북도">충청북도</option>
+            <option value="충청남도">충청남도</option>
+            <option value="전라북도">전라북도</option>
+            <option value="전라남도">전라남도</option>
+            <option value="경상북도">경상북도</option>
+            <option value="경상남도">경상남도</option>
+            <option value="제주특별자치도">제주특별자치도</option>
         </select>
         <select id="filter-category" class="input-dark sm:w-36">
             <option value="">전체 종목</option>
@@ -95,14 +112,41 @@ function updateWishBtn(marathonId) {
     }
 }
 
-async function loadCities() {
-    const res = await fetch('/api/marathons/cities');
-    const { data } = await res.json();
-    const sel = document.getElementById('filter-city');
-    (data || []).forEach(city => {
-        const opt = document.createElement('option');
-        opt.value = city; opt.textContent = city;
-        sel.appendChild(opt);
+const REGION_CENTROIDS = [
+    { name: '서울특별시',     lat: 37.5665, lng: 126.9780 },
+    { name: '부산광역시',     lat: 35.1796, lng: 129.0756 },
+    { name: '대구광역시',     lat: 35.8714, lng: 128.6014 },
+    { name: '인천광역시',     lat: 37.4563, lng: 126.7052 },
+    { name: '광주광역시',     lat: 35.1595, lng: 126.8526 },
+    { name: '대전광역시',     lat: 36.3504, lng: 127.3845 },
+    { name: '울산광역시',     lat: 35.5384, lng: 129.3114 },
+    { name: '세종특별자치도', lat: 36.4804, lng: 127.2890 },
+    { name: '경기도',         lat: 37.4138, lng: 127.5183 },
+    { name: '강원특별자치도', lat: 37.8228, lng: 128.1555 },
+    { name: '충청북도',       lat: 36.6357, lng: 127.4917 },
+    { name: '충청남도',       lat: 36.5184, lng: 126.8000 },
+    { name: '전라북도',       lat: 35.7175, lng: 127.1530 },
+    { name: '전라남도',       lat: 34.8161, lng: 126.4630 },
+    { name: '경상북도',       lat: 36.4919, lng: 128.8889 },
+    { name: '경상남도',       lat: 35.4606, lng: 128.2132 },
+    { name: '제주특별자치도', lat: 33.4996, lng: 126.5312 },
+];
+
+function getNearestRegion(lat, lng) {
+    let nearest = null, minDist = Infinity;
+    for (const r of REGION_CENTROIDS) {
+        const d = (lat - r.lat) ** 2 + (lng - r.lng) ** 2;
+        if (d < minDist) { minDist = d; nearest = r.name; }
+    }
+    return nearest;
+}
+
+function requestLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(pos => {
+        const region = getNearestRegion(pos.coords.latitude, pos.coords.longitude);
+        const sel = document.getElementById('filter-city');
+        if (sel) { sel.value = region; loadMarathons(); }
     });
 }
 
@@ -217,6 +261,9 @@ document.getElementById('search-input').addEventListener('input', () => {
 const fw = document.getElementById('filter-wish');
 if (fw) fw.addEventListener('change', () => renderMarathons(lastMarathons));
 
-Promise.all([loadCities(), loadWishes()]).then(() => loadMarathons());
+loadWishes().then(() => {
+    requestLocation();
+    loadMarathons();
+});
 </script>
 {{end}}
