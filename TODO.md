@@ -10,7 +10,7 @@
 [X] records 추가 -> csv 로 데이터 파싱을 통해 기록 추가 할 수 있도록
 [X] records 카드 (NRC 스타일 활동 페이지로 통합 재설계)
 
-[ ] react + typescript + node 로 변경
+[ ] react + typescript + next.js 로 변경 (+추후에 Drizzle 사용)
 [ ] records 캘린더로 표시할 수 있도록
 [ ] 나의 최고 기록 종목별 / 한달에 몇키로 뛰었는가? - 뱃지 ? /
 [ ] 서비스 소개 페이지 생성
@@ -34,3 +34,6 @@
 [ ] 크롤링 329개 + 구 시드 데이터 8개 + 공공데이터 API 0개
 [ ] ai_parser.go 사용하나?
 [ ] 조회 성능 향상
+[ ] docs 폴더 내 architecture.md , auth.md, data-layer.md, db-plan.md, db.md, seo.md 생성
+[ ] seo , og 적용
+[ ] sql 문은 어디서?

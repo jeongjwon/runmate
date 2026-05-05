@@ -1,15 +1,38 @@
 {
   "name": "runmate",
+  "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently -n server,client -c cyan,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client && npm run db:push --prefix server",
-    "start": "NODE_ENV=production npm run start --prefix server",
-    "install:all": "npm install --prefix server && npm install --prefix client",
-    "db:push": "npm run db:push --prefix server",
-    "db:studio": "npm run db:studio --prefix server"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "postinstall": "prisma generate"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "@tanstack/react-query": "^5.59.0",
+    "chart.js": "^4.4.4",
+    "fast-xml-parser": "^4.5.0",
+    "iconv-lite": "^0.6.3",
+    "leaflet": "^1.9.4",
+    "next": "^14.2.0",
+    "next-auth": "^4.24.0",
+    "react": "^18.3.1",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.3.1",
+    "react-leaflet": "^4.2.1"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "@types/leaflet": "^1.9.14",
+    "@types/node": "^22.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "prisma": "^5.22.0",
+    "tailwindcss": "^3.4.14",
+    "typescript": "^5.6.3"
   }
 }

@@ -12,6 +12,12 @@ credentials/
 *.sqlite
 *.sqlite3
 
+# ─── Next.js ──────────────────────────────────────────
+.next/
+out/
+.env.local
+.env.*.local
+
 # ─── 업로드 파일 ──────────────────────────────────────
 static/uploads/
 
