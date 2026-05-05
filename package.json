@@ -3,8 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "concurrently -n server,client -c cyan,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "build": "npm run build --prefix client",
-    "start": "npm run start --prefix server",
+    "build": "npm install --prefix server && npm install --prefix client && npm run build --prefix client && npm run build --prefix server",
+    "start": "NODE_ENV=production node server/dist/index.js",
     "install:all": "npm install --prefix server && npm install --prefix client",
     "db:push": "npm run db:push --prefix server",
     "db:studio": "npm run db:studio --prefix server"
