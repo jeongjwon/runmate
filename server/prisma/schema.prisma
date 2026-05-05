@@ -1,0 +1,92 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  deletedAt  DateTime? @map("deleted_at")
+
+  provider   String
+  providerId String    @map("provider_id")
+  name       String
+  email      String?
+  picture    String?
+
+  participations MarathonParticipation[]
+  records        RunningRecord[]
+
+  @@unique([provider, providerId])
+  @@map("users")
+}
+
+model Marathon {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  name            String
+  date            String
+  location        String   @default("")
+  city            String   @default("")
+  categories      String   @default("")
+  description     String   @default("")
+  officialUrl     String   @default("") @map("official_url")
+  entryFee        Int      @default(0) @map("entry_fee")
+  maxParticipants Int      @default(0) @map("max_participants")
+  isActive        Boolean  @default(true) @map("is_active")
+
+  participations MarathonParticipation[]
+
+  @@map("marathons")
+}
+
+model MarathonParticipation {
+  id             Int       @id @default(autoincrement())
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  userId         Int       @map("user_id")
+  marathonId     Int       @map("marathon_id")
+  category       String    @default("")
+  finishTime     Int?      @map("finish_time")
+  raceNotes      String?   @map("race_notes")
+  certificateUrl String?   @map("certificate_url")
+
+  user    User    @relation(fields: [userId], references: [id])
+  marathon Marathon @relation(fields: [marathonId], references: [id])
+
+  @@unique([userId, marathonId])
+  @@map("marathon_participations")
+}
+
+model RunningRecord {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  userId    Int?      @map("user_id")
+  date      String
+  distance  Float
+  duration  Int
+  pace      String    @default("")
+  heartRate Int       @default(0) @map("heart_rate")
+  calories  Int       @default(0)
+  routeType String    @default("road") @map("route_type")
+  weather   String    @default("")
+  notes     String    @default("")
+  marathonId Int?     @map("marathon_id")
+  routeData String    @default("") @map("route_data")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("running_records")
+}
