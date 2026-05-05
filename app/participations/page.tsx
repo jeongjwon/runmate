@@ -1,4 +1,4 @@
-import ParticipationsPage from '@/src/pages/ParticipationsPage'
+import ParticipationsPage from '@/src/views/ParticipationsPage'
 
 export default function Page() {
   return <ParticipationsPage />

@@ -1,4 +1,4 @@
-import MarathonsPage from '@/src/pages/MarathonsPage'
+import MarathonsPage from '@/src/views/MarathonsPage'
 
 export default function Page() {
   return <MarathonsPage />
