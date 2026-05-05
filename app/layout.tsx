@@ -8,6 +8,7 @@ import ConfirmModal from '@/src/components/ConfirmModal'
 export const metadata: Metadata = {
   title: 'RunMate',
   description: '한국 마라톤 일정 조회, 참가 신청, 러닝 기록 관리',
+  icons: { icon: '/favicon.png', apple: '/favicon.png' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
