@@ -50,7 +50,8 @@ app.use('/api/stats',        statsRouter)
 
 // ── Production: serve built React app ────────────────────────
 if (process.env.NODE_ENV === 'production') {
-  const clientDist = path.join(process.cwd(), '../client/dist')
+  // __dirname = server/dist/ → ../../client/dist
+  const clientDist = path.join(__dirname, '../../client/dist')
   app.use(express.static(clientDist))
   app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')))
 }

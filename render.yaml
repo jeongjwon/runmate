@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: runmate
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: >
+      npm install --prefix server --include=dev &&
+      npm install --prefix client --include=dev &&
+      npm run build --prefix client &&
+      npm run build --prefix server
+    startCommand: NODE_ENV=production node server/dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:../../runmate.db
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        value: https://runmate-sqpa.onrender.com
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: KAKAO_CLIENT_ID
+        sync: false
+      - key: KAKAO_CLIENT_SECRET
+        sync: false
+      - key: NAVER_CLIENT_ID
+        sync: false
+      - key: NAVER_CLIENT_SECRET
+        sync: false
