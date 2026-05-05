@@ -38,6 +38,20 @@
                 <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">메모</label>
                 <textarea id="record-notes" rows="2" placeholder="날씨, 컨디션, 소감 등" class="input-dark resize-none"></textarea>
             </div>
+            <div>
+                <label class="block text-xs font-bold mb-1.5" style="color:var(--text2);">기록증 사진</label>
+                <div id="cert-preview-wrap" class="hidden mb-2 relative">
+                    <img id="cert-preview" src="" class="w-full rounded-xl object-cover max-h-44 border" style="border-color:var(--border);">
+                    <button onclick="removeCertPreview()" class="absolute top-2 right-2 w-7 h-7 rounded-full flex items-center justify-center text-white text-xs" style="background-color:rgba(0,0,0,.5);">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <label for="cert-file" class="flex items-center justify-center gap-2 w-full py-3.5 rounded-xl cursor-pointer border-2 border-dashed transition-colors hover:opacity-80" style="border-color:var(--border);">
+                    <i class="fas fa-camera" style="color:var(--text3);"></i>
+                    <span class="text-sm font-semibold" style="color:var(--text3);">사진 추가 (JPG·PNG·WEBP, 최대 5MB)</span>
+                </label>
+                <input id="cert-file" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" onchange="previewCert(this)">
+            </div>
         </div>
         <div class="px-6 pb-6 flex gap-3">
             <button onclick="closeRecordModal()" class="btn-outline flex-1 py-2.5 text-sm font-bold">취소</button>
@@ -48,10 +62,15 @@
 
 <script>
 const categoryLabels = { '5K':'5K', '10K':'10K', 'Half':'하프 (21.1km)', 'Full':'풀코스 (42.195km)' };
+let participationsData = {}; // marathon_id → participation 객체
+let certFile = null;
+let certRemoved = false;
 
 async function loadParticipations() {
     const res = await fetch('/api/participations');
     const { data } = await res.json();
+    participationsData = {};
+    (data || []).forEach(p => { participationsData[p.marathon_id] = p; });
     renderParticipations(data || []);
 }
 
@@ -97,12 +116,16 @@ function renderParticipations(participations) {
                             ${p.category ? `<span class="badge-mint">${categoryLabels[p.category] || p.category}</span>` : ''}
                             ${time ? `<span style="background-color:rgba(59,130,246,.1);color:#3b82f6;border-radius:9999px;padding:.15rem .6rem;font-size:.72rem;font-weight:700;"><i class="fas fa-stopwatch mr-1"></i>${time}</span>` : ''}
                             ${p.race_notes ? `<span class="text-xs self-center truncate max-w-[180px]" style="color:var(--text3);">${p.race_notes}</span>` : ''}
-                        </div>` : `
+                        </div>
+                        ${p.certificate_url ? `
+                        <a href="${p.certificate_url}" download class="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg text-xs font-bold transition-opacity hover:opacity-70" style="background-color:rgba(59,130,246,.1);color:#3b82f6;">
+                            <i class="fas fa-download"></i>기록증 다운로드
+                        </a>` : ''}` : `
                         <p class="text-xs mt-1.5" style="color:var(--text3);">출전 기록이 없습니다</p>`}
                     </div>
                 </div>
                 <div class="flex flex-col gap-2 shrink-0">
-                    <button onclick="openRecordModal(${p.marathon_id}, '${(m.name||'').replace(/'/g,"\\'")}', '${m.categories||''}')"
+                    <button onclick="openRecordModal(${p.marathon_id})"
                         class="btn-mint text-xs px-3 py-1.5 rounded-lg whitespace-nowrap justify-center">
                         <i class="fas fa-pen"></i>기록 ${p.category || p.finish_time ? '수정' : '입력'}
                     </button>
@@ -135,17 +158,66 @@ function removeParticipation(marathonId, name) {
     );
 }
 
-function openRecordModal(marathonId, name, categories) {
+function openRecordModal(marathonId) {
+    const p = participationsData[marathonId] || {};
+    const m = p.marathon || {};
     document.getElementById('record-marathon-id').value = marathonId;
-    document.getElementById('record-marathon-name').textContent = name;
+    document.getElementById('record-marathon-name').textContent = m.name || '';
+
+    // 종목 셀렉트
     const sel = document.getElementById('record-category');
     sel.innerHTML = '<option value="">선택 안함</option>' +
-        (categories||'').split(',').filter(Boolean).map(cat =>
-            `<option value="${cat}">${categoryLabels[cat]||cat}</option>`
+        (m.categories||'').split(',').filter(Boolean).map(cat =>
+            `<option value="${cat}" ${p.category === cat ? 'selected' : ''}>${categoryLabels[cat]||cat}</option>`
         ).join('');
-    ['rec-h','rec-m','rec-s'].forEach(id => document.getElementById(id).value = '');
-    document.getElementById('record-notes').value = '';
+
+    // 완주 기록 (초 → H/M/S)
+    if (p.finish_time > 0) {
+        const h = Math.floor(p.finish_time / 3600);
+        const min = Math.floor((p.finish_time % 3600) / 60);
+        const s = p.finish_time % 60;
+        document.getElementById('rec-h').value = h || '';
+        document.getElementById('rec-m').value = min || '';
+        document.getElementById('rec-s').value = s || '';
+    } else {
+        ['rec-h','rec-m','rec-s'].forEach(id => document.getElementById(id).value = '');
+    }
+
+    document.getElementById('record-notes').value = p.race_notes || '';
+
+    // 기록증 초기화
+    certFile = null;
+    certRemoved = false;
+    document.getElementById('cert-file').value = '';
+    if (p.certificate_url) {
+        document.getElementById('cert-preview').src = p.certificate_url;
+        document.getElementById('cert-preview-wrap').classList.remove('hidden');
+    } else {
+        document.getElementById('cert-preview').src = '';
+        document.getElementById('cert-preview-wrap').classList.add('hidden');
+    }
+
     document.getElementById('record-modal').classList.remove('hidden');
+}
+
+function previewCert(input) {
+    if (!input.files || !input.files[0]) return;
+    certFile = input.files[0];
+    certRemoved = false;
+    const reader = new FileReader();
+    reader.onload = e => {
+        document.getElementById('cert-preview').src = e.target.result;
+        document.getElementById('cert-preview-wrap').classList.remove('hidden');
+    };
+    reader.readAsDataURL(certFile);
+}
+
+function removeCertPreview() {
+    certFile = null;
+    certRemoved = true;
+    document.getElementById('cert-file').value = '';
+    document.getElementById('cert-preview').src = '';
+    document.getElementById('cert-preview-wrap').classList.add('hidden');
 }
 
 function closeRecordModal() { document.getElementById('record-modal').classList.add('hidden'); }
@@ -158,6 +230,18 @@ async function saveRecord() {
     const s = parseInt(document.getElementById('rec-s').value) || 0;
     const finishTime = h||m||s ? `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}` : '';
     const notes = document.getElementById('record-notes').value;
+
+    // 기록증 업로드 (새 파일이 있을 때)
+    if (certFile) {
+        const fd = new FormData();
+        fd.append('certificate', certFile);
+        const cr = await fetch(`/api/participations/${marathonId}/certificate`, { method: 'POST', body: fd });
+        if (!cr.ok) {
+            const cd = await cr.json();
+            showSnackbar(cd.error || '기록증 업로드 실패', 'error');
+            return;
+        }
+    }
 
     const res = await fetch(`/api/participations/${marathonId}/record`, {
         method: 'PUT',

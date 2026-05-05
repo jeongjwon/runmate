@@ -17,10 +17,11 @@ type MarathonParticipation struct {
 	Marathon   Marathon `json:"marathon,omitempty" gorm:"foreignKey:MarathonID"`
 
 	// 출전 기록 (선택)
-	Category            string `json:"category"`              // 출전 종목
-	FinishTime          int    `json:"finish_time"`           // 완주 시간(초), 0이면 미입력
-	FinishTimeFormatted string `json:"finish_time_formatted" gorm:"-"`
-	RaceNotes           string `json:"race_notes"`            // 메모
+	Category            string `json:"category"`                       // 출전 종목
+	FinishTime          int    `json:"finish_time"`                    // 완주 시간(초), 0이면 미입력
+	FinishTimeFormatted string `json:"finish_time_formatted" gorm:"-"` // 포맷 문자열 (DB 미저장)
+	RaceNotes           string `json:"race_notes"`                     // 메모
+	CertificateURL      string `json:"certificate_url"`                // 기록증 이미지 URL
 }
 
 func (p *MarathonParticipation) AfterFind(tx *gorm.DB) error {

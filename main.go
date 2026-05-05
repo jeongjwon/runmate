@@ -184,6 +184,7 @@ func main() {
 		api.POST("/participations/:marathon_id", handlers.RequireAuth(), handlers.AddParticipation)
 		api.DELETE("/participations/:marathon_id", handlers.RequireAuth(), handlers.RemoveParticipation)
 		api.PUT("/participations/:marathon_id/record", handlers.RequireAuth(), handlers.UpdateParticipationRecord)
+		api.POST("/participations/:marathon_id/certificate", handlers.RequireAuth(), handlers.UploadCertificate)
 
 		// 러닝 기록 (인증 필요)
 		api.GET("/records", handlers.GetRecords)
