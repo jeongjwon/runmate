@@ -1,7 +1,10 @@
 package handlers
 
 import (
+	"encoding/json"
+	"encoding/xml"
 	"fmt"
+	"math"
 	"net/http"
 	"runmate/models"
 	"runmate/repository"
@@ -190,6 +193,140 @@ func DeleteRecord(c *gin.Context) {
 	}
 	repository.DB.Delete(&record)
 	c.JSON(http.StatusOK, gin.H{"message": "기록이 삭제되었습니다"})
+}
+
+// ── TCX 구조체 ─────────────────────────────────────────────────────────────────
+
+type tcxFile struct {
+	Activities struct {
+		Activity struct {
+			ID   string   `xml:"Id"`
+			Laps []tcxLap `xml:"Lap"`
+		} `xml:"Activity"`
+	} `xml:"Activities"`
+}
+
+type tcxLap struct {
+	TotalTimeSeconds float64 `xml:"TotalTimeSeconds"`
+	DistanceMeters   float64 `xml:"DistanceMeters"`
+	Calories         int     `xml:"Calories"`
+	Track            struct {
+		Trackpoints []struct {
+			Position struct {
+				Lat float64 `xml:"LatitudeDegrees"`
+				Lng float64 `xml:"LongitudeDegrees"`
+			} `xml:"Position"`
+			HeartRateBpm struct {
+				Value int `xml:"Value"`
+			} `xml:"HeartRateBpm"`
+		} `xml:"Trackpoint"`
+	} `xml:"Track"`
+}
+
+func ImportTCX(c *gin.Context) {
+	user := GetCurrentUser(c)
+	if user == nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "로그인이 필요합니다"})
+		return
+	}
+
+	fileHeader, err := c.FormFile("tcx")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "TCX 파일을 찾을 수 없습니다"})
+		return
+	}
+	f, err := fileHeader.Open()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "파일 열기 실패"})
+		return
+	}
+	defer f.Close()
+
+	var tcx tcxFile
+	if err := xml.NewDecoder(f).Decode(&tcx); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "TCX 파싱 실패: " + err.Error()})
+		return
+	}
+
+	act := tcx.Activities.Activity
+	if len(act.Laps) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "활동 데이터가 없습니다"})
+		return
+	}
+
+	var totalTimeSec float64
+	var totalDistM float64
+	var totalCal int
+	var hrSum, hrCount int
+	var allPts [][2]float64
+
+	for _, lap := range act.Laps {
+		totalTimeSec += lap.TotalTimeSeconds
+		totalDistM += lap.DistanceMeters
+		totalCal += lap.Calories
+		for _, tp := range lap.Track.Trackpoints {
+			if tp.HeartRateBpm.Value > 0 {
+				hrSum += tp.HeartRateBpm.Value
+				hrCount++
+			}
+			if tp.Position.Lat != 0 && tp.Position.Lng != 0 {
+				allPts = append(allPts, [2]float64{tp.Position.Lat, tp.Position.Lng})
+			}
+		}
+	}
+
+	// 최대 400개 포인트로 샘플링
+	step := 1
+	if len(allPts) > 400 {
+		step = len(allPts)/400 + 1
+	}
+	sampled := make([][2]float64, 0, 400)
+	for i := 0; i < len(allPts); i += step {
+		sampled = append(sampled, allPts[i])
+	}
+
+	// UTC → KST 날짜
+	date := time.Now().Format("2006-01-02")
+	if act.ID != "" {
+		if t, err := time.Parse(time.RFC3339, act.ID); err == nil {
+			date = t.In(time.FixedZone("KST", 9*3600)).Format("2006-01-02")
+		}
+	}
+
+	distKm := math.Round(totalDistM/10) / 100
+	durSec := int(totalTimeSec)
+	avgHR := 0
+	if hrCount > 0 {
+		avgHR = hrSum / hrCount
+	}
+
+	routeJSON, _ := json.Marshal(sampled)
+
+	record := models.RunningRecord{
+		UserID:    &user.ID,
+		Date:      date,
+		Distance:  distKm,
+		Duration:  durSec,
+		Pace:      calcPace(distKm, durSec),
+		HeartRate: avgHR,
+		Calories:  totalCal,
+		RouteType: func() string {
+			if rt := c.PostForm("route_type"); rt != "" {
+				return rt
+			}
+			return "road"
+		}(),
+		Weather:   c.PostForm("weather"),
+		Notes:     c.PostForm("notes"),
+		RouteData: string(routeJSON),
+	}
+
+	if err := repository.DB.Create(&record).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	record.DurationFormatted = models.FormatDuration(durSec)
+	c.JSON(http.StatusCreated, gin.H{"data": record, "message": "TCX 기록이 추가되었습니다"})
 }
 
 func GetStats(c *gin.Context) {

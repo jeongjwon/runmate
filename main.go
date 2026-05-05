@@ -192,6 +192,7 @@ func main() {
 		api.POST("/records", handlers.RequireAuth(), handlers.CreateRecord)
 		api.PUT("/records/:id", handlers.RequireAuth(), handlers.UpdateRecord)
 		api.DELETE("/records/:id", handlers.RequireAuth(), handlers.DeleteRecord)
+		api.POST("/records/import/tcx", handlers.RequireAuth(), handlers.ImportTCX)
 
 		// 통계
 		api.GET("/stats", handlers.GetStats)

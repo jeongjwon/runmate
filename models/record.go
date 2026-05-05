@@ -25,6 +25,7 @@ type RunningRecord struct {
 	Weather           string  `json:"weather"`
 	Notes             string  `json:"notes"`
 	MarathonID        *uint   `json:"marathon_id"`
+	RouteData         string  `json:"route_data"` // [[lat,lng], ...] JSON, TCX 가져오기 시 저장
 }
 
 func (r *RunningRecord) AfterFind(tx *gorm.DB) error {
