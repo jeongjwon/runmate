@@ -8,6 +8,8 @@ import path from 'path'
 import SQLiteStore from 'connect-sqlite3'
 
 import { initPassport } from './auth'
+import prisma from './db'
+import { crawlAndSync } from './services/crawler'
 import authRouter from './routes/auth'
 import marathonsRouter from './routes/marathons'
 import participationsRouter from './routes/participations'
@@ -56,4 +58,13 @@ if (process.env.NODE_ENV === 'production') {
   app.get('*', (_req, res) => res.sendFile(path.join(clientDist, 'index.html')))
 }
 
-app.listen(PORT, () => console.log(`✅  Server running on http://localhost:${PORT}`))
+app.listen(PORT, async () => {
+  console.log(`✅  Server running on http://localhost:${PORT}`)
+  const count = await prisma.marathon.count()
+  if (count === 0) {
+    console.log('📡 마라톤 데이터 없음 — 크롤링 시작...')
+    crawlAndSync()
+      .then(r => console.log(`✅  ${r.message}`))
+      .catch(e => console.error('❌  크롤링 실패:', e.message))
+  }
+})
