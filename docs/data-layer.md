@@ -52,13 +52,22 @@ const participations = await prisma.marathonParticipation.findMany({
 })
 ```
 
-**Upsert** — 크롤링 동기화에서 사용합니다.
+**Upsert** — 배지 sync 및 크롤링 동기화에서 사용합니다.
 ```ts
-await prisma.user.upsert({
-  where: { provider_providerId: { provider, providerId } },
-  update: { name, email, picture },
-  create: { provider, providerId, name, email, picture },
+await prisma.userBadge.upsert({
+  where: { userId_badgeId_year_month: { userId, badgeId, year, month } },
+  update: {},
+  create: { userId, badgeId, year, month },
 })
+```
+
+**인덱스 활용 최고기록 조회**
+```ts
+const [bestDistance, bestDuration, bestPace] = await Promise.all([
+  prisma.activity.findFirst({ where: { userId, deletedAt: null }, orderBy: { distance: 'desc' } }),
+  prisma.activity.findFirst({ where: { userId, deletedAt: null }, orderBy: { duration: 'desc' } }),
+  prisma.activity.findFirst({ where: { userId, deletedAt: null, paceSeconds: { gt: 0 } }, orderBy: { paceSeconds: 'asc' } }),
+])
 ```
 
 ## 클라이언트: TanStack Query
@@ -121,13 +130,27 @@ export const api = {
 | DELETE | `/api/participations/[marathon_id]` | 참가 취소 | 필수 |
 | PUT | `/api/participations/[marathon_id]/record` | 완주 기록 저장 | 필수 |
 | GET | `/api/records` | 활동 기록 목록 | 필수 |
-| POST | `/api/records` | 활동 기록 추가 | 필수 |
-| PUT | `/api/records/[id]` | 활동 기록 수정 | 필수 |
-| DELETE | `/api/records/[id]` | 활동 기록 삭제 | 필수 |
+| POST | `/api/records` | 활동 기록 추가 + 배지 auto-sync | 필수 |
+| PUT | `/api/records/[id]` | 활동 기록 수정 + 배지 auto-sync | 필수 |
+| DELETE | `/api/records/[id]` | 활동 기록 삭제 + 배지 auto-sync | 필수 |
 | POST | `/api/records/import/csv` | CSV 임포트 (Garmin split / 범용) | 필수 |
 | POST | `/api/records/import/tcx` | TCX 임포트 (GPS 경로 포함) | 필수 |
 | GET | `/api/stats` | 기간별 통계 (`weekly/monthly/yearly`) | 필수 |
+| GET | `/api/stats/personal-bests` | 최고기록 3종 (거리·시간·페이스) | 필수 |
+| GET | `/api/badges` | 배지 목록 조회 + 월간 km 배지 sync | 필수 |
 | GET | `/api/me` | 내 프로필 | 필수 |
+
+## 배지 Auto-sync
+
+`src/lib/syncBadges.ts`의 `syncMonthlyKmBadges(userId)`는 활동 기록 변경 시마다 호출됩니다.
+
+```ts
+// records POST/PUT/DELETE 핸들러 내부
+syncMonthlyKmBadges(session.user.id).catch(() => {})  // fire-and-forget
+```
+
+- `await` 없이 백그라운드에서 실행되어 API 응답 속도에 영향 없음
+- `GET /api/badges`에서도 동일 함수를 호출해 최신 상태를 보장
 
 ## 파일 업로드 — Supabase Storage
 
@@ -161,4 +184,4 @@ const publicUrl = supabase.storage.from('certificates').getPublicUrl(path).data.
 ### TCX (GPS 경로)
 
 `fast-xml-parser`로 파싱 후 `Trackpoint` 배열에서 위경도를 추출합니다.  
-`routeData` 컬럼에 `[[lat, lng], ...]` JSON 문자열로 저장하며, 활동 카드에서 Leaflet 지도로 시각화합니다.
+`routeData` 컬럼에 `[[lat, lng], ...]` JSON 문자열로 저장하며, 활동 상세 드로어에서 Leaflet 지도로 시각화합니다.
