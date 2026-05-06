@@ -6,11 +6,13 @@ import { useQuery } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
 import { api } from "@/src/lib/api";
 import { User } from "@/src/types";
+import { useUI } from "@/src/context/UIContext";
 
 const SIDEBAR_BG = "#0F2A3D";
 
 export default function Nav() {
   const pathname = usePathname();
+  const { openLogin } = useUI();
 
   const { data } = useQuery<{ user: User | null }>({
     queryKey: ["me"],
@@ -155,8 +157,8 @@ export default function Nav() {
               </button>
             </div>
           ) : (
-            <Link
-              href="/login"
+            <button
+              onClick={openLogin}
               className="flex items-center justify-center gap-2 w-full py-2 rounded-xl text-sm font-semibold"
               style={{
                 background: "rgba(255,255,255,0.1)",
@@ -165,7 +167,7 @@ export default function Nav() {
             >
               <i className="fas fa-sign-in-alt text-xs" />
               로그인
-            </Link>
+            </button>
           )}
         </div>
       </aside>
@@ -188,14 +190,14 @@ export default function Nav() {
             );
           })}
           {!user && (
-            <Link
-              href="/login"
+            <button
+              onClick={openLogin}
               className="flex-1 flex flex-col items-center py-3 gap-0.5"
               style={{ color: "#9aacb8" }}
             >
               <i className="fas fa-sign-in-alt text-base" />
               <span className="text-[9px] font-bold">로그인</span>
-            </Link>
+            </button>
           )}
         </div>
       </div>

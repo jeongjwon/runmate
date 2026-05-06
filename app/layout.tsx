@@ -4,6 +4,7 @@ import Providers from '@/src/components/Providers'
 import Nav from '@/src/components/Nav'
 import Snackbar from '@/src/components/Snackbar'
 import ConfirmModal from '@/src/components/ConfirmModal'
+import LoginModal from '@/src/components/LoginModal'
 
 const BASE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
@@ -60,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </div>
           <Snackbar />
           <ConfirmModal />
+          <LoginModal />
         </Providers>
       </body>
     </html>

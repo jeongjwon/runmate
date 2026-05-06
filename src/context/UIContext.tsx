@@ -8,9 +8,12 @@ interface ConfirmState  { title: string; message: string; onConfirm: () => void;
 interface UICtx {
   snackbar: SnackbarState
   confirm:  ConfirmState
+  loginModal: boolean
   showSnackbar: (msg: string, type?: 'success' | 'error' | 'info') => void
   showConfirm:  (title: string, message: string, onConfirm: () => void, options?: { confirmLabel?: string; variant?: 'danger' | 'primary' }) => void
   closeConfirm: () => void
+  openLogin:  () => void
+  closeLogin: () => void
 }
 
 const UIContext = createContext<UICtx>(null!)
@@ -18,6 +21,7 @@ const UIContext = createContext<UICtx>(null!)
 export function UIProvider({ children }: { children: ReactNode }) {
   const [snackbar, setSnackbar] = useState<SnackbarState>({ msg: '', type: 'success', visible: false })
   const [confirm,  setConfirm]  = useState<ConfirmState>({ title: '', message: '', onConfirm: () => {}, visible: false, confirmLabel: '확인', variant: 'danger' })
+  const [loginModal, setLoginModal] = useState(false)
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout>>()
 
   const showSnackbar = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -35,8 +39,11 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setConfirm(s => ({ ...s, visible: false }))
   }, [])
 
+  const openLogin  = useCallback(() => setLoginModal(true), [])
+  const closeLogin = useCallback(() => setLoginModal(false), [])
+
   return (
-    <UIContext.Provider value={{ snackbar, confirm, showSnackbar, showConfirm, closeConfirm }}>
+    <UIContext.Provider value={{ snackbar, confirm, loginModal, showSnackbar, showConfirm, closeConfirm, openLogin, closeLogin }}>
       {children}
     </UIContext.Provider>
   )
