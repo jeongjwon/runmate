@@ -38,7 +38,7 @@ export async function GET(
     return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })
   }
 
-  const r = await prisma.runningRecord.findFirst({
+  const r = await prisma.activity.findFirst({
     where: { id: Number(params.id), userId: session.user.id, deletedAt: null },
   })
   if (!r) return NextResponse.json({ error: '기록을 찾을 수 없습니다' }, { status: 404 })
@@ -55,7 +55,7 @@ export async function PUT(
     return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })
   }
 
-  const r = await prisma.runningRecord.findFirst({
+  const r = await prisma.activity.findFirst({
     where: { id: Number(params.id), userId: session.user.id, deletedAt: null },
   })
   if (!r) return NextResponse.json({ error: '기록을 찾을 수 없습니다' }, { status: 404 })
@@ -66,7 +66,7 @@ export async function PUT(
   const durSec = duration ? parseDuration(duration) : r.duration
   const dist   = distance ? Number(distance) : r.distance
 
-  const updated = await prisma.runningRecord.update({
+  const updated = await prisma.activity.update({
     where: { id: r.id },
     data: {
       ...(date       ? { date }                     : {}),
@@ -93,11 +93,11 @@ export async function DELETE(
     return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })
   }
 
-  const r = await prisma.runningRecord.findFirst({
+  const r = await prisma.activity.findFirst({
     where: { id: Number(params.id), userId: session.user.id, deletedAt: null },
   })
   if (!r) return NextResponse.json({ error: '기록을 찾을 수 없습니다' }, { status: 404 })
 
-  await prisma.runningRecord.update({ where: { id: r.id }, data: { deletedAt: new Date() } })
+  await prisma.activity.update({ where: { id: r.id }, data: { deletedAt: new Date() } })
   return NextResponse.json({ message: '기록이 삭제되었습니다' })
 }

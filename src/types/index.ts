@@ -32,7 +32,7 @@ export interface Participation {
   createdAt: string
 }
 
-export interface RunningRecord {
+export interface Activity {
   id: number
   date: string
   distance: number

@@ -33,7 +33,7 @@ export async function PUT(
 
   const userId    = session.user.id
   const marathonId = Number(params.marathon_id)
-  const { category, finish_time, race_notes } = await req.json().catch(() => ({}))
+  const { category, finish_time, race_notes, certificate_url } = await req.json().catch(() => ({}))
 
   const p = await prisma.marathonParticipation.findFirst({
     where: { userId, marathonId, deletedAt: null },
@@ -50,6 +50,7 @@ export async function PUT(
       ...(category !== undefined ? { category } : {}),
       ...(finishTimeSec !== undefined ? { finishTime: finishTimeSec } : {}),
       ...(race_notes !== undefined ? { raceNotes: race_notes } : {}),
+      ...(certificate_url !== undefined ? { certificateUrl: certificate_url } : {}),
     },
   })
 

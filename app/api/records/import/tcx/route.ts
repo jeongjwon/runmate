@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   const durSec = Math.round(totalTimeSec)
   const avgHR  = hrCount > 0 ? Math.round(hrSum / hrCount) : 0
 
-  const r = await prisma.runningRecord.create({
+  const r = await prisma.activity.create({
     data: {
       userId:    session.user.id,
       date,

@@ -50,7 +50,6 @@ body {
   color: var(--text);
   outline: none;
   transition: border-color 0.15s;
-  width: 100%;
 }
 .input-dark:focus {
   border-color: var(--mint);

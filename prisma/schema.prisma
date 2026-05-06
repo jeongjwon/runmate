@@ -18,7 +18,7 @@ model User {
   email      String?
   picture    String?
   participations MarathonParticipation[]
-  records        RunningRecord[]
+  records        Activity[]
   @@unique([provider, providerId])
   @@map("users")
 }
@@ -58,7 +58,7 @@ model MarathonParticipation {
   @@map("marathon_participations")
 }
 
-model RunningRecord {
+model Activity {
   id        Int       @id @default(autoincrement())
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
@@ -76,5 +76,5 @@ model RunningRecord {
   marathonId Int?     @map("marathon_id")
   routeData String    @default("") @map("route_data")
   user User? @relation(fields: [userId], references: [id])
-  @@map("running_records")
+  @@map("activities")
 }

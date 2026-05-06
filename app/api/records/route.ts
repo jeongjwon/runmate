@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   const from = searchParams.get('from') ?? ''
   const to   = searchParams.get('to')   ?? ''
 
-  const records = await prisma.runningRecord.findMany({
+  const records = await prisma.activity.findMany({
     where: {
       userId: session.user.id,
       deletedAt: null,
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '날짜, 거리, 시간은 필수입니다' }, { status: 400 })
   }
 
-  const r = await prisma.runningRecord.create({
+  const r = await prisma.activity.create({
     data: {
       userId:    session.user.id,
       date,

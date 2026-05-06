@@ -37,7 +37,7 @@ export async function GET(req: NextRequest) {
   const period = searchParams.get('period') ?? ''
   const year   = searchParams.get('year')   ?? ''
 
-  const records = await prisma.runningRecord.findMany({
+  const records = await prisma.activity.findMany({
     where: { userId, deletedAt: null },
     orderBy: { date: 'asc' },
   })
