@@ -39,6 +39,6 @@
 [ ] ai_parser.go 사용하나?
 [ ] 조회 성능 향상
 
-[ ] docs 폴더 내 architecture.md , auth.md, data-layer.md, db-plan.md, db.md, seo.md 생성
+[X] docs 폴더 내 architecture.md , auth.md, data-layer.md, db-plan.md, db.md, seo.md 생성
 [ ] seo , og 적용
 [ ] sql 문은 어디서?
