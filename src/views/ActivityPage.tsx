@@ -485,169 +485,153 @@ export default function ActivityPage() {
 
   const maxDist = Math.max(0, ...chartData.data);
   const barColors = chartData.data.map((v) =>
-    v === maxDist && v > 0 ? "#00c896" : "rgba(0,200,150,0.15)",
+    v === maxDist && v > 0 ? "#00c896" : "rgba(0,200,150,0.2)",
   );
-
-  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
-
+  console.log(allRecords);
   return (
     <div className="space-y-4">
-      {/* ── 통계 카드 ── */}
-      <div className="card p-5">
-        {/* 탭 */}
-        <div className="flex justify-center mb-5">
-          <div className="flex gap-0.5 p-1 rounded-xl bg-[var(--surface2)]">
-            {(["week", "month", "year", "all"] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`act-tab ${tab === t ? "active" : ""}`}
-              >
-                {{ week: "주간", month: "월간", year: "연간", all: "전체" }[t]}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-extrabold text-[var(--navy)]">활동</h1>
+        <p className="text-xs text-[var(--text3)] mt-0.5">러닝 기록과 통계</p>
+      </div>
 
-        {/* 기간 네비게이터 */}
-        <div className="flex items-center justify-between mb-5">
+      {/* Stats + Chart */}
+      {/* <div className="bg-white border border-[var(--border)] rounded-2xl p-5 space-y-4"> */}
+      {/* Tab + Period nav */}
+      <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div className="flex gap-0.5 p-0.5 rounded-xl bg-[var(--surface2)]">
+          {(["week", "month", "year", "all"] as Tab[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`act-tab ${tab === t ? "active" : ""}`}
+            >
+              {{ week: "주간", month: "월간", year: "연간", all: "전체" }[t]}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
           <button
             onClick={() => setPidx((i) => Math.min(i + 1, periods.length - 1))}
             disabled={pidx >= periods.length - 1 || tab === "all"}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] text-[var(--text3)] disabled:opacity-20 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] text-[var(--text3)] disabled:opacity-20 transition-colors"
           >
             <i className="fas fa-chevron-left text-[10px]" />
           </button>
-          <span className="text-sm font-bold text-[var(--navy)]">
+          <span className="text-sm font-bold text-[var(--navy)] min-w-[110px] text-center">
             {period?.label}
           </span>
           <button
             onClick={() => setPidx((i) => Math.max(i - 1, 0))}
             disabled={pidx <= 0 || tab === "all"}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] text-[var(--text3)] disabled:opacity-20 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] text-[var(--text3)] disabled:opacity-20 transition-colors"
           >
             <i className="fas fa-chevron-right text-[10px]" />
           </button>
         </div>
-
-        {/* 통계 + 차트 */}
-        <div className="flex flex-col sm:flex-row gap-6 sm:items-stretch">
-          {/* 통계 */}
-          <div className="sm:w-40 shrink-0">
-            {/* 주 수치 */}
-            <div className="mb-5">
-              <div className="flex items-baseline gap-1.5 leading-none">
-                <span
-                  className="font-black text-[var(--navy)] tracking-tight"
-                  style={{ fontSize: "clamp(2.2rem,7vw,3rem)", lineHeight: 1 }}
-                >
-                  {stats.dist > 0 ? stats.dist.toFixed(1) : "0"}
-                </span>
-                <span className="text-sm font-medium text-[var(--text3)]">
-                  km
-                </span>
-              </div>
-              <p className="text-[0.6rem] font-semibold text-[var(--text3)] uppercase tracking-widest mt-1.5">
-                총 거리
-              </p>
-            </div>
-
-            {/* 보조 지표 — 구분선만, 박스 없음 */}
-            <div className="space-y-0 divide-y divide-[var(--border)]">
-              {[
-                { val: stats.count, unit: "회", label: "러닝" },
-                { val: stats.pace, unit: "/km", label: "평균 페이스" },
-                {
-                  val: stats.count > 0 ? stats.time : "–",
-                  unit: "",
-                  label: "총 시간",
-                },
-              ].map(({ val, unit, label }) => (
-                <div
-                  key={label}
-                  className="flex items-center justify-between py-2.5"
-                >
-                  <span className="text-[0.65rem] text-[var(--text3)]">
-                    {label}
-                  </span>
-                  <span className="text-sm font-bold text-[var(--navy)]">
-                    {val}
-                    {unit && (
-                      <span className="text-[0.65rem] font-normal text-[var(--text3)] ml-0.5">
-                        {unit}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 차트 */}
-          <div className="flex-1 relative" style={{ minHeight: 160 }}>
-            <Bar
-                data={{
-                  labels: chartData.labels,
-                  datasets: [
-                    {
-                      data: chartData.data,
-                      backgroundColor: barColors,
-                      borderRadius: 4,
-                      borderSkipped: "bottom",
-                    },
-                  ],
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                      backgroundColor: "rgba(27,45,64,.95)",
-                      titleColor: "#9aaab8",
-                      bodyColor: "#fff",
-                      padding: 10,
-                      cornerRadius: 8,
-                      displayColors: false,
-                      callbacks: {
-                        label: (ctx) => `${(ctx.raw as number).toFixed(1)} km`,
-                      },
-                    },
-                  },
-                  scales: {
-                    x: {
-                      grid: { display: false },
-                      border: { display: false },
-                      ticks: {
-                        color: "#9aaab8",
-                        font: { size: 10 },
-                        maxTicksLimit: 12,
-                      },
-                    },
-                    y: {
-                      beginAtZero: true,
-                      grid: { color: "rgba(0,0,0,0.04)" },
-                      border: { display: false },
-                      ticks: { display: false },
-                    },
-                  },
-                }}
-                style={{ position: "absolute", inset: 0 }}
-              />
-          </div>
-        </div>
       </div>
 
-      {/* ── 활동 목록 ── */}
+      {/* 4 stat boxes */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        {[
+          {
+            val: stats.dist > 0 ? stats.dist.toFixed(1) : "0",
+            unit: "km",
+            label: "총 거리",
+          },
+          { val: String(stats.count), unit: "회", label: "러닝" },
+          { val: stats.pace, unit: "/km", label: "평균 페이스" },
+          {
+            val: stats.count > 0 ? stats.time : "–",
+            unit: "",
+            label: "총 시간",
+          },
+        ].map(({ val, unit, label }) => (
+          <div
+            key={label}
+            className="bg-white border border-[var(--border)] rounded-xl px-4 py-3"
+          >
+            <p className="text-[0.6rem] text-[var(--text3)] uppercase tracking-wider mb-1.5">
+              {label}
+            </p>
+            <p className="text-lg font-black text-[var(--navy)] leading-none tracking-tight">
+              {val}
+              {unit && (
+                <span className="text-xs font-normal text-[var(--text3)] ml-0.5">
+                  {unit}
+                </span>
+              )}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Bar chart */}
+      <div
+        style={{ height: 160 }}
+        className="h-40 bg-white rounded-xl px-5 py-4 border border-[var(--border)]"
+      >
+        <Bar
+          data={{
+            labels: chartData.labels,
+            datasets: [
+              {
+                data: chartData.data,
+                backgroundColor: barColors,
+                borderRadius: 4,
+                borderSkipped: "bottom",
+              },
+            ],
+          }}
+          options={{
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                backgroundColor: "rgba(27,45,64,.95)",
+                titleColor: "#9aaab8",
+                bodyColor: "#fff",
+                padding: 10,
+                cornerRadius: 8,
+                displayColors: false,
+                callbacks: {
+                  label: (ctx) => `${(ctx.raw as number).toFixed(1)} km`,
+                },
+              },
+            },
+            scales: {
+              x: {
+                grid: { display: false },
+                border: { display: false },
+                ticks: {
+                  color: "#9aaab8",
+                  font: { size: 10 },
+                  maxTicksLimit: 12,
+                },
+              },
+              y: {
+                beginAtZero: true,
+                grid: { color: "rgba(0,0,0,0.04)" },
+                border: { display: true },
+                ticks: { display: true },
+              },
+            },
+          }}
+        />
+      </div>
+      {/* </div> */}
+
+      {/* Activity list */}
       <div>
-        {/* 헤더 */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider">
-              활동
+            <h2 className="text-sm font-extrabold text-[var(--navy)]">
+              활동 기록
             </h2>
             {allRecords.length > 0 && (
-              <span className="text-[0.65rem] text-[var(--text3)]">
+              <span className="text-xs text-[var(--text3)]">
                 {allRecords.length}개
               </span>
             )}
@@ -692,7 +676,7 @@ export default function ActivityPage() {
         </div>
 
         {allRecords.length === 0 ? (
-          <div className="card text-center py-16">
+          <div className="bg-white border border-[var(--border)] rounded-2xl text-center py-16">
             <i className="fas fa-person-running text-4xl text-[var(--border)] block mb-3" />
             <p className="font-bold text-[var(--text2)]">
               아직 기록이 없습니다
@@ -702,116 +686,107 @@ export default function ActivityPage() {
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {allRecords.map((r) => {
-              const dow = DOW[new Date(r.date + "T00:00:00").getDay()];
-              const mon = parseInt(r.date.slice(5, 7));
-              const day = parseInt(r.date.slice(8, 10));
+          // TODO: scroll 되게 변경
+          <div className="bg-white border border-[var(--border)] rounded-2xl overflow-hidden">
+            {allRecords.map((r, idx) => {
+              const d = new Date(r.date + "T00:00:00");
+              const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
               const routePts = parseRouteData(r.routeData);
               const mapOpen = expandedMap === r.id;
 
               return (
-                <div
-                  key={r.id}
-                  className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden"
-                >
-                  <div className="px-5 py-4">
-                    {/* 날짜 + 액션 */}
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs text-[var(--text3)]">
-                        {mon}월 {day}일&nbsp;
-                        <span className="font-semibold">{dow}</span>
-                      </span>
-                      <div className="flex gap-1">
-                        {routePts && (
-                          <button
-                            onClick={() =>
-                              setExpandedMap(mapOpen ? null : r.id)
-                            }
-                            className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] transition-colors ${
-                              mapOpen
-                                ? "text-[var(--mint)]"
-                                : "text-[var(--text3)] hover:text-[var(--navy)]"
-                            }`}
-                          >
-                            <i className="fas fa-map" />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => setEditRec(r)}
-                          className="w-6 h-6 flex items-center justify-center rounded-lg text-[10px] text-[var(--text3)] hover:text-[var(--navy)] transition-colors"
-                        >
-                          <i className="fas fa-pen" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            showConfirm(
-                              "기록 삭제",
-                              "이 러닝 기록을 삭제하시겠습니까?",
-                              () => deleteMut.mutate(r.id),
-                            )
-                          }
-                          className="w-6 h-6 flex items-center justify-center rounded-lg text-[10px] text-[var(--text3)] hover:text-red-400 transition-colors"
-                        >
-                          <i className="fas fa-trash" />
-                        </button>
-                      </div>
+                <div key={r.id}>
+                  <div
+                    className={`flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface2)] transition-colors ${idx !== allRecords.length - 1 ? "border-b border-[var(--border)]" : ""}`}
+                  >
+                    {/* Icon */}
+                    <div
+                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
+                      style={{ background: "rgba(0,200,150,0.1)" }}
+                    >
+                      <i className="fas fa-person-running text-[var(--mint)] text-xs" />
                     </div>
 
-                    {/* 거리 — 히어로 수치 */}
-                    <div className="flex items-baseline gap-1.5 mb-2.5">
-                      <span
-                        className="font-black text-[var(--navy)] tracking-tight leading-none"
-                        style={{ fontSize: "1.875rem" }}
-                      >
-                        {r.distance.toFixed(2)}
-                      </span>
-                      <span className="text-sm font-medium text-[var(--text3)]">
+                    {/* Date */}
+                    <span className="text-xs text-[var(--text3)] w-20 shrink-0">
+                      {dateStr}
+                    </span>
+
+                    {/* Distance */}
+                    <span className="text-sm font-bold text-[var(--navy)] w-16 shrink-0">
+                      {r.distance.toFixed(2)}{" "}
+                      <span className="text-xs font-normal text-[var(--text3)]">
                         km
                       </span>
-                    </div>
+                    </span>
 
-                    {/* 핵심 지표 */}
-                    <div className="flex items-center flex-wrap gap-x-2 gap-y-1 text-xs text-[var(--text2)]">
-                      <span className="font-medium">
-                        {r.duration_formatted}
+                    {/* Pace */}
+                    <span
+                      className="text-xs font-semibold w-16 shrink-0"
+                      style={{ color: "#00c896" }}
+                    >
+                      {r.pace}
+                      <span className="text-[var(--text3)] font-normal">
+                        /km
                       </span>
-                      <span className="text-[var(--border)]">·</span>
-                      <span className="font-bold text-[var(--mint)]">
-                        {r.pace}
-                        <span className="font-normal text-[var(--text3)]">
-                          /km
-                        </span>
-                      </span>
-                      {r.heartRate > 0 && (
-                        <>
-                          <span className="text-[var(--border)]">·</span>
-                          <span>{r.heartRate} bpm</span>
-                        </>
-                      )}
-                    </div>
+                    </span>
 
-                    {/* 메타 태그 */}
-                    {(r.routeType || r.weather || r.notes) && (
-                      <div className="flex items-center gap-2 mt-2.5 text-[0.65rem] text-[var(--text3)]">
-                        {r.routeType && (
-                          <span>{routeLabels[r.routeType] || r.routeType}</span>
-                        )}
-                        {r.routeType && (r.weather || r.notes) && (
-                          <span>·</span>
-                        )}
-                        {r.weather && <span>{weatherEmoji[r.weather]}</span>}
-                        {r.weather && r.notes && <span>·</span>}
-                        {r.notes && (
-                          <span className="italic truncate max-w-[200px] text-[var(--text2)]">
-                            {r.notes}
-                          </span>
-                        )}
-                      </div>
+                    {/* Time */}
+                    <span className="text-xs text-[var(--text2)] w-14 shrink-0">
+                      {r.duration_formatted}
+                    </span>
+
+                    {/* Heart Rate */}
+                    <span className="text-xs text-[var(--text2)] w-14 shrink-0 flex items-center gap-1">
+                      <i className="fa-solid fa-heart text-[#F4320B]"></i>
+                      {r.heartRate}
+                      bpm
+                    </span>
+
+                    {/* Route tag */}
+                    <span className="badge-gray hidden sm:inline-block">
+                      {routeLabels[r.routeType] || r.routeType || "로드"}
+                    </span>
+
+                    {/* Notes */}
+                    {r.notes && (
+                      <span className="text-xs text-[var(--text3)] italic truncate max-w-[120px] hidden lg:block">
+                        {r.notes}
+                      </span>
                     )}
+
+                    {/* Actions */}
+                    <div className="ml-auto flex gap-1 shrink-0">
+                      {routePts && (
+                        <button
+                          onClick={() => setExpandedMap(mapOpen ? null : r.id)}
+                          className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] transition-colors ${mapOpen ? "text-[var(--mint)]" : "text-[var(--text3)] hover:text-[var(--navy)]"}`}
+                        >
+                          <i className="fas fa-map" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setEditRec(r)}
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-[10px] text-[var(--text3)] hover:text-[var(--navy)] transition-colors"
+                      >
+                        <i className="fas fa-pen" />
+                      </button>
+                      <button
+                        onClick={() =>
+                          showConfirm(
+                            "기록 삭제",
+                            "이 러닝 기록을 삭제하시겠습니까?",
+                            () => deleteMut.mutate(r.id),
+                          )
+                        }
+                        className="w-6 h-6 flex items-center justify-center rounded-lg text-[10px] text-[var(--text3)] hover:text-red-400 transition-colors"
+                      >
+                        <i className="fas fa-trash" />
+                      </button>
+                    </div>
                   </div>
 
-                  {/* 루트 지도 */}
+                  {/* Route map */}
                   {mapOpen && routePts && (
                     <div
                       style={{ height: 200 }}
