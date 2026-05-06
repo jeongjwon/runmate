@@ -136,20 +136,7 @@ function buildChart(p: Period, records: Activity[]) {
     return { labels, data };
   }
   if (p.type === "year") {
-    const labels = [
-      "1",
-      "2",
-      "3",
-      "4",
-      "5",
-      "6",
-      "7",
-      "8",
-      "9",
-      "10",
-      "11",
-      "12",
-    ].map((m) => m + "월");
+    const labels = ["1","2","3","4","5","6","7","8","9","10","11","12"].map((m) => m + "월");
     const data = Array(12).fill(0);
     records.forEach((r) => {
       if (r.date.startsWith(p.year!))
@@ -193,11 +180,7 @@ function RecordForm({
   });
   const set =
     (k: string) =>
-    (
-      e: React.ChangeEvent<
-        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-      >,
-    ) =>
+    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const save = async () => {
@@ -228,7 +211,7 @@ function RecordForm({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      className="fixed inset-0 z-[60] bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-4"
     >
       <div
         onClick={(e) => e.stopPropagation()}
@@ -248,25 +231,12 @@ function RecordForm({
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-                날짜 *
-              </label>
-              <input
-                type="date"
-                value={form.date}
-                onChange={set("date")}
-                className="input-dark w-full"
-              />
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">날짜 *</label>
+              <input type="date" value={form.date} onChange={set("date")} className="input-dark w-full" />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-                코스 유형
-              </label>
-              <select
-                value={form.routeType}
-                onChange={set("routeType")}
-                className="input-dark w-full"
-              >
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">코스 유형</label>
+              <select value={form.routeType} onChange={set("routeType")} className="input-dark w-full">
                 <option value="road">🛣️ 로드</option>
                 <option value="trail">🌲 트레일</option>
                 <option value="track">🏟️ 트랙</option>
@@ -276,81 +246,28 @@ function RecordForm({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-                거리 (km) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                placeholder="5.00"
-                value={form.distance}
-                onChange={set("distance")}
-                className="input-dark w-full"
-              />
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">거리 (km) *</label>
+              <input type="number" step="0.01" placeholder="5.00" value={form.distance} onChange={set("distance")} className="input-dark w-full" />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-                시간 *
-              </label>
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">시간 *</label>
               <div className="flex gap-1 items-center">
-                <input
-                  type="number"
-                  min={0}
-                  max={23}
-                  placeholder="0"
-                  value={form.h}
-                  onChange={set("h")}
-                  className="input-dark text-center px-1 w-full"
-                />
-                <span className="text-[var(--text3)] font-bold shrink-0">
-                  :
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  placeholder="00"
-                  value={form.m}
-                  onChange={set("m")}
-                  className="input-dark text-center px-1 w-full"
-                />
-                <span className="text-[var(--text3)] font-bold shrink-0">
-                  :
-                </span>
-                <input
-                  type="number"
-                  min={0}
-                  max={59}
-                  placeholder="00"
-                  value={form.s}
-                  onChange={set("s")}
-                  className="input-dark text-center px-1 w-full"
-                />
+                <input type="number" min={0} max={23} placeholder="0" value={form.h} onChange={set("h")} className="input-dark text-center px-1 w-full" />
+                <span className="text-[var(--text3)] font-bold shrink-0">:</span>
+                <input type="number" min={0} max={59} placeholder="00" value={form.m} onChange={set("m")} className="input-dark text-center px-1 w-full" />
+                <span className="text-[var(--text3)] font-bold shrink-0">:</span>
+                <input type="number" min={0} max={59} placeholder="00" value={form.s} onChange={set("s")} className="input-dark text-center px-1 w-full" />
               </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-                심박수 (bpm)
-              </label>
-              <input
-                type="number"
-                placeholder="150"
-                value={form.heartRate}
-                onChange={set("heartRate")}
-                className="input-dark w-full"
-              />
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">심박수 (bpm)</label>
+              <input type="number" placeholder="150" value={form.heartRate} onChange={set("heartRate")} className="input-dark w-full" />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-                날씨
-              </label>
-              <select
-                value={form.weather}
-                onChange={set("weather")}
-                className="input-dark w-full"
-              >
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">날씨</label>
+              <select value={form.weather} onChange={set("weather")} className="input-dark w-full">
                 <option value="">선택</option>
                 <option value="sunny">☀️ 맑음</option>
                 <option value="cloudy">☁️ 흐림</option>
@@ -361,34 +278,173 @@ function RecordForm({
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-              메모
-            </label>
-            <textarea
-              rows={2}
-              placeholder="오늘 러닝 어땠나요?"
-              value={form.notes}
-              onChange={set("notes")}
-              className="input-dark w-full resize-none"
-            />
+            <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">메모</label>
+            <textarea rows={2} placeholder="오늘 러닝 어땠나요?" value={form.notes} onChange={set("notes")} className="input-dark w-full resize-none" />
           </div>
         </div>
         <div className="px-5 pb-5 flex gap-3">
-          <button
-            onClick={onClose}
-            className="btn-outline flex-1 py-2.5 text-sm font-bold"
-          >
-            취소
-          </button>
-          <button
-            onClick={save}
-            className="btn-mint flex-1 justify-center py-2.5 text-sm"
-          >
-            저장
-          </button>
+          <button onClick={onClose} className="btn-outline flex-1 py-2.5 text-sm font-bold">취소</button>
+          <button onClick={save} className="btn-mint flex-1 justify-center py-2.5 text-sm">저장</button>
         </div>
       </div>
     </div>
+  );
+}
+
+const WEATHER_LABEL: Record<string, string> = {
+  sunny: "맑음", cloudy: "흐림", rainy: "비", snowy: "눈", windy: "바람",
+};
+
+function ActivityDrawer({
+  record,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  record: Activity;
+  onClose: () => void;
+  onEdit: (r: Activity) => void;
+  onDelete: (r: Activity) => void;
+}) {
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setShow(true));
+    return () => cancelAnimationFrame(t);
+  }, []);
+
+  const routePts = parseRouteData(record.routeData);
+  const d = new Date(record.date + "T00:00:00");
+  const dateStr = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  const dow = ["일", "월", "화", "수", "목", "금", "토"][d.getDay()];
+
+  const stats = [
+    { label: "거리", value: record.distance.toFixed(2), unit: "km" },
+    { label: "페이스", value: record.pace, unit: "/km" },
+    { label: "시간", value: record.duration_formatted, unit: "" },
+  ];
+  const extras = [
+    record.heartRate ? { icon: "fa-heart", label: "심박수", value: `${record.heartRate} bpm` } : null,
+    record.calories  ? { icon: "fa-fire",  label: "칼로리",  value: `${record.calories} kcal` } : null,
+    record.weather   ? { icon: "fa-cloud", label: "날씨",    value: `${weatherEmoji[record.weather] ?? ""} ${WEATHER_LABEL[record.weather] ?? record.weather}` } : null,
+  ].filter(Boolean) as { icon: string; label: string; value: string }[];
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className={`drawer-backdrop fixed inset-0 z-[50] bg-black/25 ${show ? "drawer-show" : ""}`}
+        onClick={onClose}
+      />
+
+      {/* Drawer panel */}
+      <div
+        className={`drawer-panel fixed z-[55] bg-white flex flex-col
+          bottom-0 left-0 right-0 rounded-t-2xl max-h-[88vh]
+          sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[360px] sm:rounded-none sm:rounded-l-2xl sm:max-h-full
+          ${show ? "drawer-show" : ""}`}
+        style={{ boxShadow: '-4px 0 32px rgba(0,0,0,0.10)' }}
+      >
+        {/* Handle (mobile only) */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
+          <div className="w-8 h-1 rounded-full bg-[var(--border)]" />
+        </div>
+
+        {/* Header */}
+        <div className="px-5 pt-5 pb-4 border-b border-[var(--border)] shrink-0">
+          <div className="flex items-start justify-between">
+            <div>
+              <p className="text-[11px] text-[var(--text3)] mb-0.5">{dateStr} ({dow})</p>
+              <h2 className="text-base font-extrabold text-[var(--navy)]">러닝 기록</h2>
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)]">
+                  {routeLabels[record.routeType] || "로드"}
+                </span>
+                {record.weather && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)]">
+                    {weatherEmoji[record.weather] ?? ""} {WEATHER_LABEL[record.weather]}
+                  </span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[var(--surface2)] text-[var(--text3)] transition-colors"
+            >
+              <i className="fas fa-times text-xs" />
+            </button>
+          </div>
+        </div>
+
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto">
+
+          {/* Main stats — 3 columns */}
+          <div className="grid grid-cols-3 divide-x divide-[var(--border)] border-b border-[var(--border)]">
+            {stats.map(({ label, value, unit }) => (
+              <div key={label} className="py-5 text-center">
+                <p className="text-[10px] text-[var(--text3)] uppercase tracking-wider mb-1.5">{label}</p>
+                <p className="text-xl font-black text-[var(--navy)] leading-none">{value}</p>
+                {unit && <p className="text-[10px] text-[var(--text3)] mt-1">{unit}</p>}
+              </div>
+            ))}
+          </div>
+
+          {/* Extra info */}
+          {extras.length > 0 && (
+            <div className="px-5 py-4 border-b border-[var(--border)] grid grid-cols-3 gap-3">
+              {extras.map(({ icon, label, value }) => (
+                <div key={label} className="text-center">
+                  <i className={`fas ${icon} text-[var(--text3)] text-xs mb-1 block`} />
+                  <p className="text-[9px] text-[var(--text3)] mb-0.5">{label}</p>
+                  <p className="text-xs font-semibold text-[var(--navy)]">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Route map */}
+          {routePts && (
+            <div className="border-b border-[var(--border)]" style={{ height: 220 }}>
+              <MapContainer
+                center={routePts[0]}
+                zoom={14}
+                style={{ width: "100%", height: "100%" }}
+                scrollWheelZoom={false}
+              >
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
+                <Polyline positions={routePts} color="#00c896" weight={3} opacity={0.9} />
+              </MapContainer>
+            </div>
+          )}
+
+          {/* Notes */}
+          {record.notes && (
+            <div className="px-5 py-4 border-b border-[var(--border)]">
+              <p className="text-[10px] text-[var(--text3)] uppercase tracking-wider mb-1.5">메모</p>
+              <p className="text-sm text-[var(--text)] leading-relaxed">{record.notes}</p>
+            </div>
+          )}
+
+          <div className="h-4" />
+        </div>
+
+        {/* Footer */}
+        <div className="px-5 py-4 border-t border-[var(--border)] flex gap-2 shrink-0">
+          <button
+            onClick={() => { onEdit(record); onClose(); }}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] hover:bg-[var(--surface2)] transition-colors text-[var(--navy)]"
+          >
+            <i className="fas fa-pen text-xs" /> 수정
+          </button>
+          <button
+            onClick={() => onDelete(record)}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] hover:bg-red-50 hover:border-red-200 hover:text-red-500 transition-colors text-[var(--text2)]"
+          >
+            <i className="fas fa-trash text-xs" /> 삭제
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -399,7 +455,7 @@ export default function ActivityPage() {
   const [pidx, setPidx] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
   const [editRec, setEditRec] = useState<Activity | null>(null);
-  const [expandedMap, setExpandedMap] = useState<number | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
   const tcxRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
 
@@ -409,19 +465,11 @@ export default function ActivityPage() {
   });
   const allRecords = data?.data ?? [];
 
-  const periods = useMemo(
-    () => buildPeriods(tab, allRecords),
-    [tab, allRecords],
-  );
-  useEffect(() => {
-    setPidx(0);
-  }, [tab]);
+  const periods = useMemo(() => buildPeriods(tab, allRecords), [tab, allRecords]);
+  useEffect(() => { setPidx(0); }, [tab]);
 
   const period = periods[pidx] ?? periods[0];
-  const filtered = useMemo(
-    () => filterByPeriod(allRecords, period),
-    [allRecords, period],
-  );
+  const filtered = useMemo(() => filterByPeriod(allRecords, period), [allRecords, period]);
   const stats = useMemo(() => {
     const dist = filtered.reduce((s, r) => s + r.distance, 0);
     const sec = filtered.reduce((s, r) => s + r.duration, 0);
@@ -432,16 +480,14 @@ export default function ActivityPage() {
       count: filtered.length,
     };
   }, [filtered]);
-  const chartData = useMemo(
-    () => buildChart(period, allRecords),
-    [period, allRecords],
-  );
+  const chartData = useMemo(() => buildChart(period, allRecords), [period, allRecords]);
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => api.delete(`/records/${id}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["records"] });
       showSnackbar("기록이 삭제되었습니다");
+      setSelectedActivity(null);
     },
     onError: (e: Error) => showSnackbar(e.message, "error"),
   });
@@ -454,15 +500,9 @@ export default function ActivityPage() {
     const fd = new FormData();
     fd.append("tcx", file);
     fd.append("route_type", "road");
-    api
-      .upload("/records/import/tcx", fd)
-      .then(() => {
-        reload();
-        showSnackbar("TCX 기록이 추가되었습니다");
-      })
-      .catch((err: any) =>
-        showSnackbar(err.message || "TCX 업로드 실패", "error"),
-      );
+    api.upload("/records/import/tcx", fd)
+      .then(() => { reload(); showSnackbar("TCX 기록이 추가되었습니다"); })
+      .catch((err: any) => showSnackbar(err.message || "TCX 업로드 실패", "error"));
     e.target.value = "";
   };
 
@@ -471,23 +511,21 @@ export default function ActivityPage() {
     if (!file) return;
     const fd = new FormData();
     fd.append("csv", file);
-    api
-      .upload("/records/import/csv", fd)
-      .then((res: any) => {
-        reload();
-        showSnackbar(res.message || "CSV 기록이 추가되었습니다");
-      })
-      .catch((err: any) =>
-        showSnackbar(err.message || "CSV 업로드 실패", "error"),
-      );
+    api.upload("/records/import/csv", fd)
+      .then((res: any) => { reload(); showSnackbar(res.message || "CSV 기록이 추가되었습니다"); })
+      .catch((err: any) => showSnackbar(err.message || "CSV 업로드 실패", "error"));
     e.target.value = "";
+  };
+
+  const handleDelete = (r: Activity) => {
+    showConfirm("기록 삭제", "이 러닝 기록을 삭제하시겠습니까?", () => deleteMut.mutate(r.id));
   };
 
   const maxDist = Math.max(0, ...chartData.data);
   const barColors = chartData.data.map((v) =>
     v === maxDist && v > 0 ? "#00c896" : "rgba(0,200,150,0.2)",
   );
-  console.log(allRecords);
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -496,8 +534,6 @@ export default function ActivityPage() {
         <p className="text-xs text-[var(--text3)] mt-0.5">러닝 기록과 통계</p>
       </div>
 
-      {/* Stats + Chart */}
-      {/* <div className="bg-white border border-[var(--border)] rounded-2xl p-5 space-y-4"> */}
       {/* Tab + Period nav */}
       <div className="flex flex-wrap items-center gap-3 justify-between">
         <div className="flex gap-0.5 p-0.5 rounded-xl bg-[var(--surface2)]">
@@ -535,33 +571,16 @@ export default function ActivityPage() {
       {/* 4 stat boxes */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {[
-          {
-            val: stats.dist > 0 ? stats.dist.toFixed(1) : "0",
-            unit: "km",
-            label: "총 거리",
-          },
+          { val: stats.dist > 0 ? stats.dist.toFixed(1) : "0", unit: "km", label: "총 거리" },
           { val: String(stats.count), unit: "회", label: "러닝" },
           { val: stats.pace, unit: "/km", label: "평균 페이스" },
-          {
-            val: stats.count > 0 ? stats.time : "–",
-            unit: "",
-            label: "총 시간",
-          },
+          { val: stats.count > 0 ? stats.time : "–", unit: "", label: "총 시간" },
         ].map(({ val, unit, label }) => (
-          <div
-            key={label}
-            className="bg-white border border-[var(--border)] rounded-xl px-4 py-3"
-          >
-            <p className="text-[0.6rem] text-[var(--text3)] uppercase tracking-wider mb-1.5">
-              {label}
-            </p>
+          <div key={label} className="bg-white border border-[var(--border)] rounded-xl px-4 py-3">
+            <p className="text-[0.6rem] text-[var(--text3)] uppercase tracking-wider mb-1.5">{label}</p>
             <p className="text-lg font-black text-[var(--navy)] leading-none tracking-tight">
               {val}
-              {unit && (
-                <span className="text-xs font-normal text-[var(--text3)] ml-0.5">
-                  {unit}
-                </span>
-              )}
+              {unit && <span className="text-xs font-normal text-[var(--text3)] ml-0.5">{unit}</span>}
             </p>
           </div>
         ))}
@@ -570,19 +589,12 @@ export default function ActivityPage() {
       {/* Bar chart */}
       <div
         style={{ height: 160 }}
-        className="h-40 bg-white rounded-xl px-5 py-4 border border-[var(--border)]"
+        className="bg-white rounded-xl px-5 py-4 border border-[var(--border)]"
       >
         <Bar
           data={{
             labels: chartData.labels,
-            datasets: [
-              {
-                data: chartData.data,
-                backgroundColor: barColors,
-                borderRadius: 4,
-                borderSkipped: "bottom",
-              },
-            ],
+            datasets: [{ data: chartData.data, backgroundColor: barColors, borderRadius: 4, borderSkipped: "bottom" }],
           }}
           options={{
             responsive: true,
@@ -596,79 +608,38 @@ export default function ActivityPage() {
                 padding: 10,
                 cornerRadius: 8,
                 displayColors: false,
-                callbacks: {
-                  label: (ctx) => `${(ctx.raw as number).toFixed(1)} km`,
-                },
+                callbacks: { label: (ctx) => `${(ctx.raw as number).toFixed(1)} km` },
               },
             },
             scales: {
-              x: {
-                grid: { display: false },
-                border: { display: false },
-                ticks: {
-                  color: "#9aaab8",
-                  font: { size: 10 },
-                  maxTicksLimit: 12,
-                },
-              },
-              y: {
-                beginAtZero: true,
-                grid: { color: "rgba(0,0,0,0.04)" },
-                border: { display: true },
-                ticks: { display: true },
-              },
+              x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9aaab8", font: { size: 10 }, maxTicksLimit: 12 } },
+              y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.04)" }, border: { display: true }, ticks: { display: true } },
             },
           }}
         />
       </div>
-      {/* </div> */}
 
       {/* Activity list */}
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-extrabold text-[var(--navy)]">
-              활동 기록
-            </h2>
+            <h2 className="text-sm font-extrabold text-[var(--navy)]">활동 기록</h2>
             {allRecords.length > 0 && (
-              <span className="text-xs text-[var(--text3)]">
-                {allRecords.length}개
-              </span>
+              <span className="text-xs text-[var(--text3)]">{allRecords.length}개</span>
             )}
           </div>
           <div className="flex gap-1.5 items-center">
-            <input
-              ref={csvRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleCSV}
-            />
-            <input
-              ref={tcxRef}
-              type="file"
-              accept=".tcx"
-              className="hidden"
-              onChange={handleTCX}
-            />
-            <button
-              onClick={() => csvRef.current?.click()}
-              className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
-            >
+            <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCSV} />
+            <input ref={tcxRef} type="file" accept=".tcx" className="hidden" onChange={handleTCX} />
+            <button onClick={() => csvRef.current?.click()} className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5">
               <i className="fas fa-file-csv text-[var(--text3)]" />
               <span className="hidden sm:inline">CSV</span>
             </button>
-            <button
-              onClick={() => tcxRef.current?.click()}
-              className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
-            >
+            <button onClick={() => tcxRef.current?.click()} className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5">
               <i className="fas fa-route text-[var(--text3)]" />
               <span className="hidden sm:inline">TCX</span>
             </button>
-            <button
-              onClick={() => setAddOpen(true)}
-              className="btn-mint px-3 py-1.5 text-xs flex items-center gap-1.5"
-            >
+            <button onClick={() => setAddOpen(true)} className="btn-mint px-3 py-1.5 text-xs flex items-center gap-1.5">
               <i className="fas fa-plus" />
               <span className="hidden sm:inline">추가</span>
             </button>
@@ -678,153 +649,89 @@ export default function ActivityPage() {
         {allRecords.length === 0 ? (
           <div className="bg-white border border-[var(--border)] rounded-2xl text-center py-16">
             <i className="fas fa-person-running text-4xl text-[var(--border)] block mb-3" />
-            <p className="font-bold text-[var(--text2)]">
-              아직 기록이 없습니다
-            </p>
-            <p className="text-xs text-[var(--text3)] mt-1">
-              첫 러닝 기록을 추가해보세요
-            </p>
+            <p className="font-bold text-[var(--text2)]">아직 기록이 없습니다</p>
+            <p className="text-xs text-[var(--text3)] mt-1">첫 러닝 기록을 추가해보세요</p>
           </div>
         ) : (
-          // TODO: scroll 되게 변경
           <div className="bg-white border border-[var(--border)] rounded-2xl overflow-hidden">
-            {allRecords.map((r, idx) => {
-              const d = new Date(r.date + "T00:00:00");
-              const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
-              const routePts = parseRouteData(r.routeData);
-              const mapOpen = expandedMap === r.id;
+            {/* Horizontally scrollable table */}
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: 560 }}>
+                {allRecords.map((r, idx) => {
+                  const d = new Date(r.date + "T00:00:00");
+                  const dateStr = `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
+                  const isSelected = selectedActivity?.id === r.id;
 
-              return (
-                <div key={r.id}>
-                  <div
-                    className={`flex items-center gap-3 px-4 py-3 hover:bg-[var(--surface2)] transition-colors ${idx !== allRecords.length - 1 ? "border-b border-[var(--border)]" : ""}`}
-                  >
-                    {/* Icon */}
+                  return (
                     <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0"
-                      style={{ background: "rgba(0,200,150,0.1)" }}
+                      key={r.id}
+                      onClick={() => setSelectedActivity(r)}
+                      className={`flex items-center px-4 py-3 cursor-pointer transition-colors ${
+                        isSelected ? "bg-[#f5fffe]" : "hover:bg-[var(--surface2)]"
+                      } ${idx !== allRecords.length - 1 ? "border-b border-[var(--border)]" : ""}`}
                     >
-                      <i className="fas fa-person-running text-[var(--mint)] text-xs" />
-                    </div>
-
-                    {/* Date */}
-                    <span className="text-xs text-[var(--text3)] w-20 shrink-0">
-                      {dateStr}
-                    </span>
-
-                    {/* Distance */}
-                    <span className="text-sm font-bold text-[var(--navy)] w-16 shrink-0">
-                      {r.distance.toFixed(2)}{" "}
-                      <span className="text-xs font-normal text-[var(--text3)]">
-                        km
-                      </span>
-                    </span>
-
-                    {/* Pace */}
-                    <span
-                      className="text-xs font-semibold w-16 shrink-0"
-                      style={{ color: "#00c896" }}
-                    >
-                      {r.pace}
-                      <span className="text-[var(--text3)] font-normal">
-                        /km
-                      </span>
-                    </span>
-
-                    {/* Time */}
-                    <span className="text-xs text-[var(--text2)] w-14 shrink-0">
-                      {r.duration_formatted}
-                    </span>
-
-                    {/* Heart Rate */}
-                    <span className="text-xs text-[var(--text2)] w-14 shrink-0 flex items-center gap-1">
-                      <i className="fa-solid fa-heart text-[#F4320B]"></i>
-                      {r.heartRate}
-                      bpm
-                    </span>
-
-                    {/* Route tag */}
-                    <span className="badge-gray hidden sm:inline-block">
-                      {routeLabels[r.routeType] || r.routeType || "로드"}
-                    </span>
-
-                    {/* Notes */}
-                    {r.notes && (
-                      <span className="text-xs text-[var(--text3)] italic truncate max-w-[120px] hidden lg:block">
-                        {r.notes}
-                      </span>
-                    )}
-
-                    {/* Actions */}
-                    <div className="ml-auto flex gap-1 shrink-0">
-                      {routePts && (
-                        <button
-                          onClick={() => setExpandedMap(mapOpen ? null : r.id)}
-                          className={`w-6 h-6 flex items-center justify-center rounded-lg text-[10px] transition-colors ${mapOpen ? "text-[var(--mint)]" : "text-[var(--text3)] hover:text-[var(--navy)]"}`}
-                        >
-                          <i className="fas fa-map" />
-                        </button>
-                      )}
-                      <button
-                        onClick={() => setEditRec(r)}
-                        className="w-6 h-6 flex items-center justify-center rounded-lg text-[10px] text-[var(--text3)] hover:text-[var(--navy)] transition-colors"
+                      {/* Icon */}
+                      <div
+                        className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mr-3"
+                        style={{ background: isSelected ? "rgba(0,200,150,0.15)" : "rgba(0,200,150,0.08)" }}
                       >
-                        <i className="fas fa-pen" />
-                      </button>
-                      <button
-                        onClick={() =>
-                          showConfirm(
-                            "기록 삭제",
-                            "이 러닝 기록을 삭제하시겠습니까?",
-                            () => deleteMut.mutate(r.id),
-                          )
-                        }
-                        className="w-6 h-6 flex items-center justify-center rounded-lg text-[10px] text-[var(--text3)] hover:text-red-400 transition-colors"
-                      >
-                        <i className="fas fa-trash" />
-                      </button>
-                    </div>
-                  </div>
+                        <i className="fas fa-person-running text-[var(--mint)] text-xs" />
+                      </div>
 
-                  {/* Route map */}
-                  {mapOpen && routePts && (
-                    <div
-                      style={{ height: 200 }}
-                      className="border-t border-[var(--border)]"
-                    >
-                      <MapContainer
-                        center={routePts[0]}
-                        zoom={14}
-                        style={{ width: "100%", height: "100%" }}
-                        scrollWheelZoom={false}
-                      >
-                        <TileLayer
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          attribution="&copy; OpenStreetMap"
-                        />
-                        <Polyline
-                          positions={routePts}
-                          color="#00c896"
-                          weight={3}
-                          opacity={0.85}
-                        />
-                      </MapContainer>
+                      {/* Date — fixed */}
+                      <span className="text-xs text-[var(--text3)] w-[88px] shrink-0">{dateStr}</span>
+
+                      {/* Distance — grows */}
+                      <span className="flex-1 text-sm font-bold text-[var(--navy)]">
+                        {r.distance.toFixed(2)}<span className="text-xs font-normal text-[var(--text3)] ml-0.5">km</span>
+                      </span>
+
+                      {/* Pace — grows */}
+                      <span className="flex-1 text-xs font-semibold text-[var(--text2)]">
+                        {r.pace}<span className="text-[var(--text3)] font-normal">/km</span>
+                      </span>
+
+                      {/* Time — grows */}
+                      <span className="flex-1 text-xs text-[var(--text2)]">{r.duration_formatted}</span>
+
+                      {/* Heart Rate — grows */}
+                      <span className="flex-1 text-xs text-[var(--text2)] flex items-center gap-1">
+                        <i className="fa-solid fa-heart text-[#F4320B] text-[9px]" />
+                        {r.heartRate ? `${r.heartRate} bpm` : "—"}
+                      </span>
+
+                      {/* Route tag — fixed */}
+                      <span className="badge-gray shrink-0 mr-3">{routeLabels[r.routeType] || "로드"}</span>
+
+                      {/* Chevron */}
+                      <i
+                        className="fas fa-chevron-right text-[10px] shrink-0 transition-colors"
+                        style={{ color: isSelected ? "#00c896" : "#d1d9e0" }}
+                      />
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>
 
+      {/* Activity Detail Drawer */}
+      {selectedActivity && (
+        <ActivityDrawer
+          record={selectedActivity}
+          onClose={() => setSelectedActivity(null)}
+          onEdit={(r) => setEditRec(r)}
+          onDelete={handleDelete}
+        />
+      )}
+
+      {/* Add / Edit form */}
       {(addOpen || editRec) && (
         <RecordForm
           record={editRec ?? undefined}
-          onClose={() => {
-            setAddOpen(false);
-            setEditRec(null);
-          }}
+          onClose={() => { setAddOpen(false); setEditRec(null); }}
           onSaved={reload}
         />
       )}

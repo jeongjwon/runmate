@@ -122,3 +122,23 @@ body {
 
 /* ── Leaflet ── */
 .leaflet-container { border-radius: 0.75rem; }
+
+/* ── Activity Drawer animation ── */
+.drawer-panel {
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease;
+  transform: translateY(100%);
+  opacity: 0;
+}
+.drawer-panel.drawer-show {
+  transform: translateY(0);
+  opacity: 1;
+}
+@media (min-width: 640px) {
+  .drawer-panel { transform: translateX(100%); }
+  .drawer-panel.drawer-show { transform: translateX(0); opacity: 1; }
+}
+.drawer-backdrop {
+  transition: opacity 0.25s ease;
+  opacity: 0;
+}
+.drawer-backdrop.drawer-show { opacity: 1; }
