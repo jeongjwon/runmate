@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
+import { syncMonthlyKmBadges } from '@/src/lib/syncBadges'
 
 function calcPace(distKm: number, durSec: number): string {
   if (!distKm || !durSec) return '-'
@@ -82,6 +83,8 @@ export async function PUT(
     },
   })
 
+  syncMonthlyKmBadges(session.user.id).catch(() => {})
+
   return NextResponse.json({ data: withFormatted(updated), message: '기록이 수정되었습니다' })
 }
 
@@ -100,5 +103,8 @@ export async function DELETE(
   if (!r) return NextResponse.json({ error: '기록을 찾을 수 없습니다' }, { status: 404 })
 
   await prisma.activity.update({ where: { id: r.id }, data: { deletedAt: new Date() } })
+
+  syncMonthlyKmBadges(session.user.id).catch(() => {})
+
   return NextResponse.json({ message: '기록이 삭제되었습니다' })
 }

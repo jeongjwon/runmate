@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
+import { syncMonthlyKmBadges } from '@/src/lib/syncBadges'
 
 function calcPace(distKm: number, durSec: number): string {
   if (!distKm || !durSec) return '-'
@@ -80,6 +81,9 @@ export async function POST(req: NextRequest) {
       notes:       notes     || '',
     },
   })
+
+  // 배지 sync (await 없이 백그라운드 실행 — 응답 속도에 영향 없음)
+  syncMonthlyKmBadges(session.user.id).catch(() => {})
 
   return NextResponse.json({ data: withFormatted(r), message: '기록이 저장되었습니다' }, { status: 201 })
 }
