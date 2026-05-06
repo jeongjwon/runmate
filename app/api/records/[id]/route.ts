@@ -78,6 +78,7 @@ export async function PUT(
       ...(weather    ? { weather }                  : {}),
       notes: notes ?? r.notes,
       pace: calcPace(dist, durSec),
+      paceSeconds: dist > 0 ? Math.round(durSec / dist) : 0,
     },
   })
 

@@ -64,18 +64,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '날짜, 거리, 시간은 필수입니다' }, { status: 400 })
   }
 
+  const distNum = Number(distance)
   const r = await prisma.activity.create({
     data: {
-      userId:    session.user.id,
+      userId:      session.user.id,
       date,
-      distance:  Number(distance),
-      duration:  durSec,
-      pace:      calcPace(Number(distance), durSec),
-      heartRate: Number(heart_rate) || 0,
-      calories:  Number(calories)   || 0,
-      routeType: route_type || 'road',
-      weather:   weather   || '',
-      notes:     notes     || '',
+      distance:    distNum,
+      duration:    durSec,
+      pace:        calcPace(distNum, durSec),
+      paceSeconds: distNum > 0 ? Math.round(durSec / distNum) : 0,
+      heartRate:   Number(heart_rate) || 0,
+      calories:    Number(calories)   || 0,
+      routeType:   route_type || 'road',
+      weather:     weather   || '',
+      notes:       notes     || '',
     },
   })
 

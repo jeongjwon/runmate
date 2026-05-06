@@ -19,6 +19,7 @@ model User {
   picture    String?
   participations MarathonParticipation[]
   records        Activity[]
+  userBadges     UserBadge[]
   @@unique([provider, providerId])
   @@map("users")
 }
@@ -59,22 +60,55 @@ model MarathonParticipation {
 }
 
 model Activity {
-  id        Int       @id @default(autoincrement())
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  deletedAt DateTime? @map("deleted_at")
-  userId    Int?      @map("user_id")
-  date      String
-  distance  Float
-  duration  Int
-  pace      String    @default("")
-  heartRate Int       @default(0) @map("heart_rate")
-  calories  Int       @default(0)
-  routeType String    @default("road") @map("route_type")
-  weather   String    @default("")
-  notes     String    @default("")
-  marathonId Int?     @map("marathon_id")
-  routeData String    @default("") @map("route_data")
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  userId      Int?      @map("user_id")
+  date        String
+  distance    Float
+  duration    Int
+  pace        String    @default("")
+  paceSeconds Int       @default(0) @map("pace_seconds")
+  heartRate   Int       @default(0) @map("heart_rate")
+  calories    Int       @default(0)
+  routeType   String    @default("road") @map("route_type")
+  weather     String    @default("")
+  notes       String    @default("")
+  marathonId  Int?      @map("marathon_id")
+  routeData   String    @default("") @map("route_data")
   user User? @relation(fields: [userId], references: [id])
+  @@index([userId, distance])
+  @@index([userId, duration])
+  @@index([userId, paceSeconds])
+  @@index([userId, date])
   @@map("activities")
+}
+
+model BadgeDefinition {
+  id          Int         @id @default(autoincrement())
+  code        String      @unique
+  type        String      // "monthly_km" | "streak" | "personal_best"
+  name        String
+  description String      @default("")
+  icon        String      @default("")
+  threshold   Int         @default(0)
+  unit        String      @default("")
+  userBadges  UserBadge[]
+  @@map("badge_definitions")
+}
+
+model UserBadge {
+  id          Int              @id @default(autoincrement())
+  createdAt   DateTime         @default(now()) @map("created_at")
+  userId      Int              @map("user_id")
+  badgeId     Int              @map("badge_id")
+  year        Int?
+  month       Int?
+  awardedAt   DateTime         @default(now()) @map("awarded_at")
+  user        User             @relation(fields: [userId], references: [id])
+  badge       BadgeDefinition  @relation(fields: [badgeId], references: [id])
+  @@unique([userId, badgeId, year, month])
+  @@index([userId])
+  @@map("user_badges")
 }
