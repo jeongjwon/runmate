@@ -17,6 +17,9 @@ export async function POST(
   const body       = await req.json().catch(() => ({}))
   const { category } = body
 
+  const user = await prisma.user.findUnique({ where: { id: userId } })
+  if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })
+
   const marathon = await prisma.marathon.findUnique({ where: { id: marathonId } })
   if (!marathon) {
     return NextResponse.json({ error: '대회를 찾을 수 없습니다' }, { status: 404 })

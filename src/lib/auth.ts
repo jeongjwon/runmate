@@ -113,14 +113,12 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, account }) {
       if (account) {
         const dbUser = await prisma.user.findUnique({
-          where: {
-            provider_providerId: {
-              provider: account.provider,
-              providerId: account.providerAccountId,
-            },
-          },
+          where: { provider_providerId: { provider: account.provider, providerId: account.providerAccountId } },
         })
         if (dbUser) token.dbUserId = dbUser.id
+      } else if (token.dbUserId) {
+        const exists = await prisma.user.findUnique({ where: { id: token.dbUserId as number } })
+        if (!exists) token.dbUserId = undefined
       }
       return token
     },

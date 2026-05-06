@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { api } from "@/src/lib/api";
 import { Marathon } from "@/src/types";
 import { useUI } from "@/src/context/UIContext";
@@ -35,6 +37,8 @@ const CATS = ["전체", "5K", "10K", "Half", "Full"];
 export default function MarathonsPage() {
   const qc = useQueryClient();
   const { showSnackbar, showConfirm } = useUI();
+  const { data: session } = useSession();
+  const router = useRouter();
   const [city, setCity] = useState("전체");
   const [cat, setCat] = useState("전체");
   const [search, setSearch] = useState("");
@@ -75,6 +79,15 @@ export default function MarathonsPage() {
   });
 
   const toggle = (m: Marathon) => {
+    if (!session) {
+      showConfirm(
+        "로그인이 필요합니다",
+        "내 마라톤에 추가하려면 로그인해야 합니다.",
+        () => router.push("/login"),
+        { confirmLabel: "로그인하기", variant: "primary" },
+      );
+      return;
+    }
     if (participationMap[m.id]) {
       showConfirm(
         "내 마라톤에서 제거",

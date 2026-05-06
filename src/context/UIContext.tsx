@@ -3,13 +3,13 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
 
 interface SnackbarState { msg: string; type: 'success' | 'error' | 'info'; visible: boolean }
-interface ConfirmState  { title: string; message: string; onConfirm: () => void; visible: boolean }
+interface ConfirmState  { title: string; message: string; onConfirm: () => void; visible: boolean; confirmLabel?: string; variant?: 'danger' | 'primary' }
 
 interface UICtx {
   snackbar: SnackbarState
   confirm:  ConfirmState
   showSnackbar: (msg: string, type?: 'success' | 'error' | 'info') => void
-  showConfirm:  (title: string, message: string, onConfirm: () => void) => void
+  showConfirm:  (title: string, message: string, onConfirm: () => void, options?: { confirmLabel?: string; variant?: 'danger' | 'primary' }) => void
   closeConfirm: () => void
 }
 
@@ -17,7 +17,7 @@ const UIContext = createContext<UICtx>(null!)
 
 export function UIProvider({ children }: { children: ReactNode }) {
   const [snackbar, setSnackbar] = useState<SnackbarState>({ msg: '', type: 'success', visible: false })
-  const [confirm,  setConfirm]  = useState<ConfirmState>({ title: '', message: '', onConfirm: () => {}, visible: false })
+  const [confirm,  setConfirm]  = useState<ConfirmState>({ title: '', message: '', onConfirm: () => {}, visible: false, confirmLabel: '확인', variant: 'danger' })
   const [timer, setTimer] = useState<ReturnType<typeof setTimeout>>()
 
   const showSnackbar = useCallback((msg: string, type: 'success' | 'error' | 'info' = 'success') => {
@@ -27,8 +27,8 @@ export function UIProvider({ children }: { children: ReactNode }) {
     setTimer(t)
   }, [timer])
 
-  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void) => {
-    setConfirm({ title, message, onConfirm, visible: true })
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void, options?: { confirmLabel?: string; variant?: 'danger' | 'primary' }) => {
+    setConfirm({ title, message, onConfirm, visible: true, confirmLabel: options?.confirmLabel ?? '확인', variant: options?.variant ?? 'danger' })
   }, [])
 
   const closeConfirm = useCallback(() => {

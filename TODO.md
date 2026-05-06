@@ -11,7 +11,8 @@
 [X] records 카드 (NRC 스타일 활동 페이지로 통합 재설계)
 [X] react + typescript + next.js + Prisma 로 변경 (+추후에 Drizzle 고민)
 [X] 검색 필터
-[ ] records > activities 로 테이블명 변경
+[X] records > activities 로 테이블명 변경
+[X] 비로그인 유저 마라톤 추가시 500 에러
 
 [ ] records 캘린더로 표시할 수 있도록
 
