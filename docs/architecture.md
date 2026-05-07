@@ -32,6 +32,10 @@ runmate/
 │   ├── activity/page.tsx       # 활동 기록 페이지
 │   ├── participations/page.tsx # 내 마라톤 페이지
 │   ├── stats/page.tsx          # 통계 페이지
+│   ├── about/page.tsx          # 서비스 소개 (정적 서버 컴포넌트)
+│   ├── contact/page.tsx        # 문의 · FAQ (정적 서버 컴포넌트)
+│   ├── privacy/page.tsx        # 개인정보처리방침 (정적 서버 컴포넌트)
+│   ├── terms/page.tsx          # 이용약관 (정적 서버 컴포넌트)
 │   └── api/                    # Route Handlers (REST API)
 │       ├── auth/[...nextauth]/ # NextAuth 핸들러
 │       ├── marathons/          # 마라톤 목록 · 상세 · 동기화
@@ -49,6 +53,7 @@ runmate/
 │   │   └── StatsPage.tsx
 │   ├── components/             # 공유 UI 컴포넌트
 │   │   ├── Nav.tsx
+│   │   ├── Footer.tsx          # 하단 푸터 (소개·문의·약관 링크)
 │   │   ├── Providers.tsx       # QueryClient + SessionProvider
 │   │   ├── ConfirmModal.tsx
 │   │   ├── Snackbar.tsx        # 우측 상단 토스트 알림

@@ -5,6 +5,7 @@ import Nav from '@/src/components/Nav'
 import Snackbar from '@/src/components/Snackbar'
 import ConfirmModal from '@/src/components/ConfirmModal'
 import LoginModal from '@/src/components/LoginModal'
+import Footer from '@/src/components/Footer'
 
 const BASE_URL = process.env.NEXTAUTH_URL ?? 'http://localhost:3000'
 
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <main className="flex-1 min-w-0 bg-white overflow-y-auto">
               <div className="max-w-5xl mx-auto px-6 py-5 pb-24 sm:pb-6">
                 {children}
+                <Footer />
               </div>
             </main>
           </div>

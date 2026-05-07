@@ -136,7 +136,20 @@ function buildChart(p: Period, records: Activity[]) {
     return { labels, data };
   }
   if (p.type === "year") {
-    const labels = ["1","2","3","4","5","6","7","8","9","10","11","12"].map((m) => m + "월");
+    const labels = [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "11",
+      "12",
+    ].map((m) => m + "월");
     const data = Array(12).fill(0);
     records.forEach((r) => {
       if (r.date.startsWith(p.year!))
@@ -180,7 +193,11 @@ function RecordForm({
   });
   const set =
     (k: string) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
+    (
+      e: React.ChangeEvent<
+        HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+      >,
+    ) =>
       setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const save = async () => {
@@ -231,12 +248,25 @@ function RecordForm({
         <div className="p-5 space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">날짜 *</label>
-              <input type="date" value={form.date} onChange={set("date")} className="input-dark w-full" />
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                날짜 *
+              </label>
+              <input
+                type="date"
+                value={form.date}
+                onChange={set("date")}
+                className="input-dark w-full"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">코스 유형</label>
-              <select value={form.routeType} onChange={set("routeType")} className="input-dark w-full">
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                코스 유형
+              </label>
+              <select
+                value={form.routeType}
+                onChange={set("routeType")}
+                className="input-dark w-full"
+              >
                 <option value="road">🛣️ 로드</option>
                 <option value="trail">🌲 트레일</option>
                 <option value="track">🏟️ 트랙</option>
@@ -246,28 +276,81 @@ function RecordForm({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">거리 (km) *</label>
-              <input type="number" step="0.01" placeholder="5.00" value={form.distance} onChange={set("distance")} className="input-dark w-full" />
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                거리 (km) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                placeholder="5.00"
+                value={form.distance}
+                onChange={set("distance")}
+                className="input-dark w-full"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">시간 *</label>
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                시간 *
+              </label>
               <div className="flex gap-1 items-center">
-                <input type="number" min={0} max={23} placeholder="0" value={form.h} onChange={set("h")} className="input-dark text-center px-1 w-full" />
-                <span className="text-[var(--text3)] font-bold shrink-0">:</span>
-                <input type="number" min={0} max={59} placeholder="00" value={form.m} onChange={set("m")} className="input-dark text-center px-1 w-full" />
-                <span className="text-[var(--text3)] font-bold shrink-0">:</span>
-                <input type="number" min={0} max={59} placeholder="00" value={form.s} onChange={set("s")} className="input-dark text-center px-1 w-full" />
+                <input
+                  type="number"
+                  min={0}
+                  max={23}
+                  placeholder="0"
+                  value={form.h}
+                  onChange={set("h")}
+                  className="input-dark text-center px-1 w-full"
+                />
+                <span className="text-[var(--text3)] font-bold shrink-0">
+                  :
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  placeholder="00"
+                  value={form.m}
+                  onChange={set("m")}
+                  className="input-dark text-center px-1 w-full"
+                />
+                <span className="text-[var(--text3)] font-bold shrink-0">
+                  :
+                </span>
+                <input
+                  type="number"
+                  min={0}
+                  max={59}
+                  placeholder="00"
+                  value={form.s}
+                  onChange={set("s")}
+                  className="input-dark text-center px-1 w-full"
+                />
               </div>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">심박수 (bpm)</label>
-              <input type="number" placeholder="150" value={form.heartRate} onChange={set("heartRate")} className="input-dark w-full" />
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                심박수 (bpm)
+              </label>
+              <input
+                type="number"
+                placeholder="150"
+                value={form.heartRate}
+                onChange={set("heartRate")}
+                className="input-dark w-full"
+              />
             </div>
             <div>
-              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">날씨</label>
-              <select value={form.weather} onChange={set("weather")} className="input-dark w-full">
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                날씨
+              </label>
+              <select
+                value={form.weather}
+                onChange={set("weather")}
+                className="input-dark w-full"
+              >
                 <option value="">선택</option>
                 <option value="sunny">☀️ 맑음</option>
                 <option value="cloudy">☁️ 흐림</option>
@@ -278,13 +361,31 @@ function RecordForm({
             </div>
           </div>
           <div>
-            <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">메모</label>
-            <textarea rows={2} placeholder="오늘 러닝 어땠나요?" value={form.notes} onChange={set("notes")} className="input-dark w-full resize-none" />
+            <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+              메모
+            </label>
+            <textarea
+              rows={2}
+              placeholder="오늘 러닝 어땠나요?"
+              value={form.notes}
+              onChange={set("notes")}
+              className="input-dark w-full resize-none"
+            />
           </div>
         </div>
         <div className="px-5 pb-5 flex gap-3">
-          <button onClick={onClose} className="btn-outline flex-1 py-2.5 text-sm font-bold">취소</button>
-          <button onClick={save} className="btn-mint flex-1 justify-center py-2.5 text-sm">저장</button>
+          <button
+            onClick={onClose}
+            className="btn-outline flex-1 py-2.5 text-sm font-bold"
+          >
+            취소
+          </button>
+          <button
+            onClick={save}
+            className="btn-mint flex-1 justify-center py-2.5 text-sm"
+          >
+            저장
+          </button>
         </div>
       </div>
     </div>
@@ -292,7 +393,11 @@ function RecordForm({
 }
 
 const WEATHER_LABEL: Record<string, string> = {
-  sunny: "맑음", cloudy: "흐림", rainy: "비", snowy: "눈", windy: "바람",
+  sunny: "맑음",
+  cloudy: "흐림",
+  rainy: "비",
+  snowy: "눈",
+  windy: "바람",
 };
 
 function ActivityDrawer({
@@ -323,9 +428,19 @@ function ActivityDrawer({
     { label: "시간", value: record.duration_formatted, unit: "" },
   ];
   const extras = [
-    record.heartRate ? { icon: "fa-heart", label: "심박수", value: `${record.heartRate} bpm` } : null,
-    record.calories  ? { icon: "fa-fire",  label: "칼로리",  value: `${record.calories} kcal` } : null,
-    record.weather   ? { icon: "fa-cloud", label: "날씨",    value: `${weatherEmoji[record.weather] ?? ""} ${WEATHER_LABEL[record.weather] ?? record.weather}` } : null,
+    record.heartRate
+      ? { icon: "fa-heart", label: "심박수", value: `${record.heartRate} bpm` }
+      : null,
+    record.calories
+      ? { icon: "fa-fire", label: "칼로리", value: `${record.calories} kcal` }
+      : null,
+    record.weather
+      ? {
+          icon: "fa-cloud",
+          label: "날씨",
+          value: `${weatherEmoji[record.weather] ?? ""} ${WEATHER_LABEL[record.weather] ?? record.weather}`,
+        }
+      : null,
   ].filter(Boolean) as { icon: string; label: string; value: string }[];
 
   return (
@@ -339,10 +454,10 @@ function ActivityDrawer({
       {/* Drawer panel */}
       <div
         className={`drawer-panel fixed z-[55] bg-white flex flex-col
-          bottom-0 left-0 right-0 rounded-t-2xl max-h-[88vh]
-          sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[360px] sm:rounded-none sm:rounded-l-2xl sm:max-h-full
+          bottom-0 left-0 right-0 max-h-[88vh]
+          sm:inset-y-0 sm:right-0 sm:left-auto sm:w-[360px]  sm:max-h-full
           ${show ? "drawer-show" : ""}`}
-        style={{ boxShadow: '-4px 0 32px rgba(0,0,0,0.10)' }}
+        style={{ boxShadow: "-4px 0 32px rgba(0,0,0,0.10)" }}
       >
         {/* Handle (mobile only) */}
         <div className="sm:hidden flex justify-center pt-3 pb-1 shrink-0">
@@ -353,15 +468,20 @@ function ActivityDrawer({
         <div className="px-5 pt-5 pb-4 border-b border-[var(--border)] shrink-0">
           <div className="flex items-start justify-between">
             <div>
-              <p className="text-[11px] text-[var(--text3)] mb-0.5">{dateStr} ({dow})</p>
-              <h2 className="text-base font-extrabold text-[var(--navy)]">러닝 기록</h2>
+              <p className="text-[11px] text-[var(--text3)] mb-0.5">
+                {dateStr} ({dow})
+              </p>
+              <h2 className="text-base font-extrabold text-[var(--navy)]">
+                러닝 기록
+              </h2>
               <div className="flex items-center gap-1.5 mt-2">
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)]">
                   {routeLabels[record.routeType] || "로드"}
                 </span>
                 {record.weather && (
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)]">
-                    {weatherEmoji[record.weather] ?? ""} {WEATHER_LABEL[record.weather]}
+                    {weatherEmoji[record.weather] ?? ""}{" "}
+                    {WEATHER_LABEL[record.weather]}
                   </span>
                 )}
               </div>
@@ -377,14 +497,19 @@ function ActivityDrawer({
 
         {/* Scrollable body */}
         <div className="flex-1 overflow-y-auto">
-
           {/* Main stats — 3 columns */}
           <div className="grid grid-cols-3 divide-x divide-[var(--border)] border-b border-[var(--border)]">
             {stats.map(({ label, value, unit }) => (
               <div key={label} className="py-5 text-center">
-                <p className="text-[10px] text-[var(--text3)] uppercase tracking-wider mb-1.5">{label}</p>
-                <p className="text-xl font-black text-[var(--navy)] leading-none">{value}</p>
-                {unit && <p className="text-[10px] text-[var(--text3)] mt-1">{unit}</p>}
+                <p className="text-[10px] text-[var(--text3)] uppercase tracking-wider mb-1.5">
+                  {label}
+                </p>
+                <p className="text-xl font-black text-[var(--navy)] leading-none">
+                  {value}
+                </p>
+                {unit && (
+                  <p className="text-[10px] text-[var(--text3)] mt-1">{unit}</p>
+                )}
               </div>
             ))}
           </div>
@@ -394,9 +519,15 @@ function ActivityDrawer({
             <div className="px-5 py-4 border-b border-[var(--border)] grid grid-cols-3 gap-3">
               {extras.map(({ icon, label, value }) => (
                 <div key={label} className="text-center">
-                  <i className={`fas ${icon} text-[var(--text3)] text-xs mb-1 block`} />
-                  <p className="text-[9px] text-[var(--text3)] mb-0.5">{label}</p>
-                  <p className="text-xs font-semibold text-[var(--navy)]">{value}</p>
+                  <i
+                    className={`fas ${icon} text-[var(--text3)] text-xs mb-1 block`}
+                  />
+                  <p className="text-[9px] text-[var(--text3)] mb-0.5">
+                    {label}
+                  </p>
+                  <p className="text-xs font-semibold text-[var(--navy)]">
+                    {value}
+                  </p>
                 </div>
               ))}
             </div>
@@ -404,15 +535,26 @@ function ActivityDrawer({
 
           {/* Route map */}
           {routePts && (
-            <div className="border-b border-[var(--border)]" style={{ height: 220 }}>
+            <div
+              className="border-b border-[var(--border)]"
+              style={{ height: 220 }}
+            >
               <MapContainer
                 center={routePts[0]}
                 zoom={14}
                 style={{ width: "100%", height: "100%" }}
                 scrollWheelZoom={false}
               >
-                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution="&copy; OpenStreetMap" />
-                <Polyline positions={routePts} color="#00c896" weight={3} opacity={0.9} />
+                <TileLayer
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  attribution="&copy; OpenStreetMap"
+                />
+                <Polyline
+                  positions={routePts}
+                  color="#00c896"
+                  weight={3}
+                  opacity={0.9}
+                />
               </MapContainer>
             </div>
           )}
@@ -420,8 +562,12 @@ function ActivityDrawer({
           {/* Notes */}
           {record.notes && (
             <div className="px-5 py-4 border-b border-[var(--border)]">
-              <p className="text-[10px] text-[var(--text3)] uppercase tracking-wider mb-1.5">메모</p>
-              <p className="text-sm text-[var(--text)] leading-relaxed">{record.notes}</p>
+              <p className="text-[10px] text-[var(--text3)] uppercase tracking-wider mb-1.5">
+                메모
+              </p>
+              <p className="text-sm text-[var(--text)] leading-relaxed">
+                {record.notes}
+              </p>
             </div>
           )}
 
@@ -431,7 +577,10 @@ function ActivityDrawer({
         {/* Footer */}
         <div className="px-5 py-4 border-t border-[var(--border)] flex gap-2 shrink-0">
           <button
-            onClick={() => { onEdit(record); onClose(); }}
+            onClick={() => {
+              onEdit(record);
+              onClose();
+            }}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-semibold border border-[var(--border)] hover:bg-[var(--surface2)] transition-colors text-[var(--navy)]"
           >
             <i className="fas fa-pen text-xs" /> 수정
@@ -455,7 +604,9 @@ export default function ActivityPage() {
   const [pidx, setPidx] = useState(0);
   const [addOpen, setAddOpen] = useState(false);
   const [editRec, setEditRec] = useState<Activity | null>(null);
-  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(
+    null,
+  );
   const tcxRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
 
@@ -465,11 +616,19 @@ export default function ActivityPage() {
   });
   const allRecords = data?.data ?? [];
 
-  const periods = useMemo(() => buildPeriods(tab, allRecords), [tab, allRecords]);
-  useEffect(() => { setPidx(0); }, [tab]);
+  const periods = useMemo(
+    () => buildPeriods(tab, allRecords),
+    [tab, allRecords],
+  );
+  useEffect(() => {
+    setPidx(0);
+  }, [tab]);
 
   const period = periods[pidx] ?? periods[0];
-  const filtered = useMemo(() => filterByPeriod(allRecords, period), [allRecords, period]);
+  const filtered = useMemo(
+    () => filterByPeriod(allRecords, period),
+    [allRecords, period],
+  );
   const stats = useMemo(() => {
     const dist = filtered.reduce((s, r) => s + r.distance, 0);
     const sec = filtered.reduce((s, r) => s + r.duration, 0);
@@ -480,7 +639,10 @@ export default function ActivityPage() {
       count: filtered.length,
     };
   }, [filtered]);
-  const chartData = useMemo(() => buildChart(period, allRecords), [period, allRecords]);
+  const chartData = useMemo(
+    () => buildChart(period, allRecords),
+    [period, allRecords],
+  );
 
   const deleteMut = useMutation({
     mutationFn: (id: number) => api.delete(`/records/${id}`),
@@ -500,9 +662,15 @@ export default function ActivityPage() {
     const fd = new FormData();
     fd.append("tcx", file);
     fd.append("route_type", "road");
-    api.upload("/records/import/tcx", fd)
-      .then(() => { reload(); showSnackbar("TCX 기록이 추가되었습니다"); })
-      .catch((err: any) => showSnackbar(err.message || "TCX 업로드 실패", "error"));
+    api
+      .upload("/records/import/tcx", fd)
+      .then(() => {
+        reload();
+        showSnackbar("TCX 기록이 추가되었습니다");
+      })
+      .catch((err: any) =>
+        showSnackbar(err.message || "TCX 업로드 실패", "error"),
+      );
     e.target.value = "";
   };
 
@@ -511,14 +679,22 @@ export default function ActivityPage() {
     if (!file) return;
     const fd = new FormData();
     fd.append("csv", file);
-    api.upload("/records/import/csv", fd)
-      .then((res: any) => { reload(); showSnackbar(res.message || "CSV 기록이 추가되었습니다"); })
-      .catch((err: any) => showSnackbar(err.message || "CSV 업로드 실패", "error"));
+    api
+      .upload("/records/import/csv", fd)
+      .then((res: any) => {
+        reload();
+        showSnackbar(res.message || "CSV 기록이 추가되었습니다");
+      })
+      .catch((err: any) =>
+        showSnackbar(err.message || "CSV 업로드 실패", "error"),
+      );
     e.target.value = "";
   };
 
   const handleDelete = (r: Activity) => {
-    showConfirm("기록 삭제", "이 러닝 기록을 삭제하시겠습니까?", () => deleteMut.mutate(r.id));
+    showConfirm("기록 삭제", "이 러닝 기록을 삭제하시겠습니까?", () =>
+      deleteMut.mutate(r.id),
+    );
   };
 
   const maxDist = Math.max(0, ...chartData.data);
@@ -571,16 +747,33 @@ export default function ActivityPage() {
       {/* 4 stat boxes */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
         {[
-          { val: stats.dist > 0 ? stats.dist.toFixed(1) : "0", unit: "km", label: "총 거리" },
+          {
+            val: stats.dist > 0 ? stats.dist.toFixed(1) : "0",
+            unit: "km",
+            label: "총 거리",
+          },
           { val: String(stats.count), unit: "회", label: "러닝" },
           { val: stats.pace, unit: "/km", label: "평균 페이스" },
-          { val: stats.count > 0 ? stats.time : "–", unit: "", label: "총 시간" },
+          {
+            val: stats.count > 0 ? stats.time : "–",
+            unit: "",
+            label: "총 시간",
+          },
         ].map(({ val, unit, label }) => (
-          <div key={label} className="bg-white border border-[var(--border)] rounded-xl px-4 py-3">
-            <p className="text-[0.6rem] text-[var(--text3)] uppercase tracking-wider mb-1.5">{label}</p>
+          <div
+            key={label}
+            className="bg-white border border-[var(--border)] rounded-xl px-4 py-3"
+          >
+            <p className="text-[0.6rem] text-[var(--text3)] uppercase tracking-wider mb-1.5">
+              {label}
+            </p>
             <p className="text-lg font-black text-[var(--navy)] leading-none tracking-tight">
               {val}
-              {unit && <span className="text-xs font-normal text-[var(--text3)] ml-0.5">{unit}</span>}
+              {unit && (
+                <span className="text-xs font-normal text-[var(--text3)] ml-0.5">
+                  {unit}
+                </span>
+              )}
             </p>
           </div>
         ))}
@@ -594,7 +787,14 @@ export default function ActivityPage() {
         <Bar
           data={{
             labels: chartData.labels,
-            datasets: [{ data: chartData.data, backgroundColor: barColors, borderRadius: 4, borderSkipped: "bottom" }],
+            datasets: [
+              {
+                data: chartData.data,
+                backgroundColor: barColors,
+                borderRadius: 4,
+                borderSkipped: "bottom",
+              },
+            ],
           }}
           options={{
             responsive: true,
@@ -608,12 +808,27 @@ export default function ActivityPage() {
                 padding: 10,
                 cornerRadius: 8,
                 displayColors: false,
-                callbacks: { label: (ctx) => `${(ctx.raw as number).toFixed(1)} km` },
+                callbacks: {
+                  label: (ctx) => `${(ctx.raw as number).toFixed(1)} km`,
+                },
               },
             },
             scales: {
-              x: { grid: { display: false }, border: { display: false }, ticks: { color: "#9aaab8", font: { size: 10 }, maxTicksLimit: 12 } },
-              y: { beginAtZero: true, grid: { color: "rgba(0,0,0,0.04)" }, border: { display: true }, ticks: { display: true } },
+              x: {
+                grid: { display: false },
+                border: { display: false },
+                ticks: {
+                  color: "#9aaab8",
+                  font: { size: 10 },
+                  maxTicksLimit: 12,
+                },
+              },
+              y: {
+                beginAtZero: true,
+                grid: { color: "rgba(0,0,0,0.04)" },
+                border: { display: true },
+                ticks: { display: true },
+              },
             },
           }}
         />
@@ -623,23 +838,48 @@ export default function ActivityPage() {
       <div>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-extrabold text-[var(--navy)]">활동 기록</h2>
+            <h2 className="text-sm font-extrabold text-[var(--navy)]">
+              활동 기록
+            </h2>
             {allRecords.length > 0 && (
-              <span className="text-xs text-[var(--text3)]">{allRecords.length}개</span>
+              <span className="text-xs text-[var(--text3)]">
+                {allRecords.length}개
+              </span>
             )}
           </div>
           <div className="flex gap-1.5 items-center">
-            <input ref={csvRef} type="file" accept=".csv" className="hidden" onChange={handleCSV} />
-            <input ref={tcxRef} type="file" accept=".tcx" className="hidden" onChange={handleTCX} />
-            <button onClick={() => csvRef.current?.click()} className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5">
+            <input
+              ref={csvRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={handleCSV}
+            />
+            <input
+              ref={tcxRef}
+              type="file"
+              accept=".tcx"
+              className="hidden"
+              onChange={handleTCX}
+            />
+            <button
+              onClick={() => csvRef.current?.click()}
+              className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
+            >
               <i className="fas fa-file-csv text-[var(--text3)]" />
               <span className="hidden sm:inline">CSV</span>
             </button>
-            <button onClick={() => tcxRef.current?.click()} className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5">
+            <button
+              onClick={() => tcxRef.current?.click()}
+              className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
+            >
               <i className="fas fa-route text-[var(--text3)]" />
               <span className="hidden sm:inline">TCX</span>
             </button>
-            <button onClick={() => setAddOpen(true)} className="btn-mint px-3 py-1.5 text-xs flex items-center gap-1.5">
+            <button
+              onClick={() => setAddOpen(true)}
+              className="btn-mint px-3 py-1.5 text-xs flex items-center gap-1.5"
+            >
               <i className="fas fa-plus" />
               <span className="hidden sm:inline">추가</span>
             </button>
@@ -649,8 +889,12 @@ export default function ActivityPage() {
         {allRecords.length === 0 ? (
           <div className="bg-white border border-[var(--border)] rounded-2xl text-center py-16">
             <i className="fas fa-person-running text-4xl text-[var(--border)] block mb-3" />
-            <p className="font-bold text-[var(--text2)]">아직 기록이 없습니다</p>
-            <p className="text-xs text-[var(--text3)] mt-1">첫 러닝 기록을 추가해보세요</p>
+            <p className="font-bold text-[var(--text2)]">
+              아직 기록이 없습니다
+            </p>
+            <p className="text-xs text-[var(--text3)] mt-1">
+              첫 러닝 기록을 추가해보세요
+            </p>
           </div>
         ) : (
           <div className="bg-white border border-[var(--border)] rounded-2xl overflow-hidden">
@@ -667,32 +911,48 @@ export default function ActivityPage() {
                       key={r.id}
                       onClick={() => setSelectedActivity(r)}
                       className={`flex items-center px-4 py-3 cursor-pointer transition-colors ${
-                        isSelected ? "bg-[#f5fffe]" : "hover:bg-[var(--surface2)]"
+                        isSelected
+                          ? "bg-[#f5fffe]"
+                          : "hover:bg-[var(--surface2)]"
                       } ${idx !== allRecords.length - 1 ? "border-b border-[var(--border)]" : ""}`}
                     >
                       {/* Icon */}
                       <div
                         className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 mr-3"
-                        style={{ background: isSelected ? "rgba(0,200,150,0.15)" : "rgba(0,200,150,0.08)" }}
+                        style={{
+                          background: isSelected
+                            ? "rgba(0,200,150,0.15)"
+                            : "rgba(0,200,150,0.08)",
+                        }}
                       >
                         <i className="fas fa-person-running text-[var(--mint)] text-xs" />
                       </div>
 
                       {/* Date — fixed */}
-                      <span className="text-xs text-[var(--text3)] w-[88px] shrink-0">{dateStr}</span>
+                      <span className="text-xs text-[var(--text3)] w-[88px] shrink-0">
+                        {dateStr}
+                      </span>
 
                       {/* Distance — grows */}
                       <span className="flex-1 text-sm font-bold text-[var(--navy)]">
-                        {r.distance.toFixed(2)}<span className="text-xs font-normal text-[var(--text3)] ml-0.5">km</span>
+                        {r.distance.toFixed(2)}
+                        <span className="text-xs font-normal text-[var(--text3)] ml-0.5">
+                          km
+                        </span>
                       </span>
 
                       {/* Pace — grows */}
                       <span className="flex-1 text-xs font-semibold text-[var(--text2)]">
-                        {r.pace}<span className="text-[var(--text3)] font-normal">/km</span>
+                        {r.pace}
+                        <span className="text-[var(--text3)] font-normal">
+                          /km
+                        </span>
                       </span>
 
                       {/* Time — grows */}
-                      <span className="flex-1 text-xs text-[var(--text2)]">{r.duration_formatted}</span>
+                      <span className="flex-1 text-xs text-[var(--text2)]">
+                        {r.duration_formatted}
+                      </span>
 
                       {/* Heart Rate — grows */}
                       <span className="flex-1 text-xs text-[var(--text2)] flex items-center gap-1">
@@ -701,7 +961,9 @@ export default function ActivityPage() {
                       </span>
 
                       {/* Route tag — fixed */}
-                      <span className="badge-gray shrink-0 mr-3">{routeLabels[r.routeType] || "로드"}</span>
+                      <span className="badge-gray shrink-0 mr-3">
+                        {routeLabels[r.routeType] || "로드"}
+                      </span>
 
                       {/* Chevron */}
                       <i
@@ -731,7 +993,10 @@ export default function ActivityPage() {
       {(addOpen || editRec) && (
         <RecordForm
           record={editRec ?? undefined}
-          onClose={() => { setAddOpen(false); setEditRec(null); }}
+          onClose={() => {
+            setAddOpen(false);
+            setEditRec(null);
+          }}
           onSaved={reload}
         />
       )}
