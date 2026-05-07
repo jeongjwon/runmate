@@ -52,11 +52,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <Providers>
-          <div className="flex min-h-screen bg-[var(--bg)] text-[var(--text)]">
+          <div className="flex h-screen bg-[var(--bg)] text-[var(--text)]">
             <Nav />
-            <main className="flex-1 min-w-0 bg-white overflow-y-auto">
-              <div className="max-w-5xl mx-auto px-6 py-5 pb-24 sm:pb-6">
-                {children}
+            <main className="flex-1 min-w-0 bg-white overflow-y-auto flex flex-col">
+              <div className="flex-1 w-full max-w-5xl mx-auto px-6 py-5 pb-24 sm:pb-6 flex flex-col">
+                <div className="flex-1">
+                  {children}
+                </div>
                 <Footer />
               </div>
             </main>

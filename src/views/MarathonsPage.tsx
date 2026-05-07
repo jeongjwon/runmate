@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import { api } from "@/src/lib/api";
@@ -32,6 +32,7 @@ const CITIES = [
   "제주도",
 ];
 const CATS = ["전체", "5K", "10K", "Half", "Full"];
+const PAGE_SIZE = 12;
 
 export default function MarathonsPage() {
   const qc = useQueryClient();
@@ -40,6 +41,7 @@ export default function MarathonsPage() {
   const [city, setCity] = useState("전체");
   const [cat, setCat] = useState("전체");
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
 
   const { data, isLoading } = useQuery<MarathonsResponse>({
     queryKey: ["marathons", city, cat],
@@ -52,9 +54,18 @@ export default function MarathonsPage() {
   });
 
   const participationMap = data?.participationMap ?? {};
-  const marathons = (data?.data ?? []).filter(
-    (m) => !search || m.name.toLowerCase().includes(search.toLowerCase()),
+  const filtered = useMemo(
+    () =>
+      (data?.data ?? []).filter(
+        (m) => !search || m.name.toLowerCase().includes(search.toLowerCase()),
+      ),
+    [data, search],
   );
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const marathons = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  useEffect(() => { setPage(1); }, [city, cat, search]);
 
   const addMut = useMutation({
     mutationFn: (id: number) => api.post(`/participations/${id}`, {}),
@@ -138,7 +149,7 @@ export default function MarathonsPage() {
         </div>
         {!isLoading && (
           <div className="flex items-center self-center ml-auto text-xs text-[var(--text3)]">
-            {marathons.length}개 대회
+            {filtered.length}개 대회
           </div>
         )}
       </div>
@@ -148,7 +159,7 @@ export default function MarathonsPage() {
         <div className="text-center py-24 text-[var(--text3)]">
           <i className="fas fa-spinner fa-spin text-2xl" />
         </div>
-      ) : marathons.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="text-center py-24">
           <i className="fas fa-calendar-times text-3xl mb-3 block text-[var(--border)]" />
           <p className="font-semibold text-sm text-[var(--text2)]">
@@ -250,6 +261,75 @@ export default function MarathonsPage() {
           })}
         </div>
       )}
+
+      {/* 페이지네이션 */}
+      {!isLoading && totalPages > 1 && (
+        <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+      )}
+    </div>
+  );
+}
+
+function Pagination({
+  page,
+  totalPages,
+  onChange,
+}: {
+  page: number;
+  totalPages: number;
+  onChange: (p: number) => void;
+}) {
+  const delta = 2;
+  const pages: (number | "…")[] = [];
+
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= page - delta && i <= page + delta)) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== "…") {
+      pages.push("…");
+    }
+  }
+
+  const btn =
+    "min-w-[32px] h-8 px-2 flex items-center justify-center rounded-lg text-xs font-semibold transition-colors";
+
+  return (
+    <div className="flex items-center justify-center gap-1 pt-2">
+      <button
+        onClick={() => onChange(page - 1)}
+        disabled={page === 1}
+        className={`${btn} border border-[var(--border)] text-[var(--text2)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed`}
+      >
+        <i className="fas fa-chevron-left text-[10px]" />
+      </button>
+
+      {pages.map((p, i) =>
+        p === "…" ? (
+          <span key={`ellipsis-${i}`} className="text-xs text-[var(--text3)] px-1">
+            …
+          </span>
+        ) : (
+          <button
+            key={p}
+            onClick={() => onChange(p)}
+            className={`${btn} ${
+              p === page
+                ? "bg-[var(--navy)] text-white"
+                : "border border-[var(--border)] text-[var(--text2)] hover:bg-[var(--surface2)]"
+            }`}
+          >
+            {p}
+          </button>
+        ),
+      )}
+
+      <button
+        onClick={() => onChange(page + 1)}
+        disabled={page === totalPages}
+        className={`${btn} border border-[var(--border)] text-[var(--text2)] hover:bg-[var(--surface2)] disabled:opacity-30 disabled:cursor-not-allowed`}
+      >
+        <i className="fas fa-chevron-right text-[10px]" />
+      </button>
     </div>
   );
 }
