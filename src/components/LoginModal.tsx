@@ -61,7 +61,7 @@ export default function LoginModal() {
           {/* Google */}
           <button
             onClick={() => signIn("google", { callbackUrl: "/" })}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl border font-semibold text-sm transition-colors"
+            className="flex justify-center items-center gap-3 w-full px-4 py-3 rounded-xl border font-semibold text-sm transition-colors"
             style={{ borderColor: "#e8eaed", color: "#3c4043" }}
             onMouseEnter={(e) => {
               (e.currentTarget as HTMLElement).style.background = "#f8f9fa";
@@ -75,13 +75,13 @@ export default function LoginModal() {
               className="w-5 h-5"
               alt="Google"
             />
-            <span className="flex-1 text-center">Google로 로그인</span>
+            <span className="">Google로 로그인</span>
           </button>
 
           {/* Kakao */}
           <button
             onClick={() => signIn("kakao", { callbackUrl: "/" })}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
+            className="flex justify-center items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
             style={{ background: "#FEE500", color: "#3C1E1E" }}
           >
             <img
@@ -89,13 +89,13 @@ export default function LoginModal() {
               className="w-5 h-5 rounded"
               alt="Kakao"
             />
-            <span className="flex-1 text-center">카카오로 로그인</span>
+            <span className="">카카오로 로그인</span>
           </button>
 
           {/* Naver */}
           <button
             onClick={() => signIn("naver", { callbackUrl: "/" })}
-            className="flex items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
+            className="flex justify-center items-center gap-3 w-full px-4 py-3 rounded-xl font-semibold text-sm transition-opacity hover:opacity-90"
             style={{ background: "#03C75A", color: "white" }}
           >
             <span
@@ -104,7 +104,7 @@ export default function LoginModal() {
             >
               N
             </span>
-            <span className="flex-1 text-center">네이버로 로그인</span>
+            <span className="">네이버로 로그인</span>
           </button>
         </div>
 
