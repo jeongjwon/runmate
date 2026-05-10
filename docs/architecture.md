@@ -42,8 +42,9 @@ runmate/
 │       ├── participations/     # 참가 신청 · 완주 기록
 │       ├── records/            # 활동 기록 CRUD · TCX·CSV 임포트
 │       ├── badges/             # 배지 조회 및 월간 km 자동 sync
-│       ├── stats/              # 기간별 통계 · 개인 최고기록
-│       └── me/                 # 내 프로필
+│       ├── notifications/      # 알림 목록 조회 · 읽음 처리
+│       ├── stats/              # 기간별 통계 · 개인 최고기록 · 이번 달 km
+│       └── me/                 # 내 프로필 · 회원 탈퇴
 │
 ├── src/
 │   ├── views/                  # 페이지 수준 클라이언트 컴포넌트
@@ -53,6 +54,7 @@ runmate/
 │   │   └── StatsPage.tsx
 │   ├── components/             # 공유 UI 컴포넌트
 │   │   ├── Nav.tsx
+│   │   ├── TopBar.tsx          # 우측 상단바 (알림 벨 · 프로필 드롭다운)
 │   │   ├── Footer.tsx          # 하단 푸터 (소개·문의·약관 링크)
 │   │   ├── Providers.tsx       # QueryClient + SessionProvider
 │   │   ├── ConfirmModal.tsx
@@ -112,7 +114,17 @@ runmate/
 
 - 활동 기록 저장·수정·삭제 시 **자동 호출** (fire-and-forget, 응답 속도 무관)
 - 통계 페이지 진입 시 `GET /api/badges`에서도 호출 (최신 상태 보장)
-- `BadgeDefinition` 마스터 테이블 기준으로 `UserBadge` upsert
+- `BadgeDefinition` 마스터 테이블 기준으로 `UserBadge` 생성 (신규 획득 시에만)
+- 배지 신규 획득 시 `notifications` 테이블에 `type: 'badge'` 알림 자동 생성
+
+## 알림 시스템
+
+`GET /api/notifications` 호출 시 D-day 알림을 실시간 생성한 뒤 목록을 반환합니다.
+
+- **D-7 / D-1 알림**: 참가 신청한 마라톤의 대회일 7일·1일 전에 자동 생성
+- **배지 알림**: `syncMonthlyKmBadges` 에서 신규 배지 획득 시 생성
+- 알림은 `(userId, type, refId)` 유니크 제약으로 중복 생성 방지
+- `TopBar`에서 5분마다 폴링하며, 패널을 열면 전체 읽음 처리 (`PATCH /api/notifications`)
 
 ## 데이터 크롤링
 

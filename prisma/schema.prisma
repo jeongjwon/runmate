@@ -20,6 +20,7 @@ model User {
   participations MarathonParticipation[]
   records        Activity[]
   userBadges     UserBadge[]
+  notifications  Notification[]
   @@unique([provider, providerId])
   @@map("users")
 }
@@ -111,4 +112,19 @@ model UserBadge {
   @@unique([userId, badgeId, year, month])
   @@index([userId])
   @@map("user_badges")
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  userId    Int      @map("user_id")
+  type      String   // "dday_7" | "dday_1" | "badge"
+  refId     String   @map("ref_id")
+  title     String
+  body      String   @default("")
+  isRead    Boolean  @default(false) @map("is_read")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, type, refId])
+  @@index([userId, isRead])
+  @@map("notifications")
 }

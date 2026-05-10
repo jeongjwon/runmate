@@ -11,7 +11,8 @@ PostgreSQL (Supabase 호스팅)을 사용하며 Prisma v5 ORM으로 관리합니
 users
   ├── marathon_participations (1:N)
   ├── activities              (1:N)
-  └── user_badges             (1:N)
+  ├── user_badges             (1:N)
+  └── notifications           (1:N)
 
 marathons
   └── marathon_participations (1:N)
@@ -165,6 +166,30 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 
 **유니크 제약**: `(user_id, badge_id, year, month)` — 동일 조건 중복 방지  
 **인덱스**: `(user_id)` — 사용자별 배지 목록 조회
+
+---
+
+### `notifications`
+
+사용자에게 전달되는 알림 이력입니다. D-day 알림과 배지 획득 알림을 저장합니다.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | `int` PK | 자동 증가 |
+| `created_at` | `timestamptz` | 생성 시각 |
+| `user_id` | `int` FK → users | 알림 수신자 |
+| `type` | `text` | 알림 유형 (`dday_7` / `dday_1` / `badge`) |
+| `ref_id` | `text` | 알림 참조 식별자 (중복 방지용 복합 키 구성 요소) |
+| `title` | `text` | 알림 제목 |
+| `body` | `text` | 알림 본문 (기본값 빈 문자열) |
+| `is_read` | `bool` | 읽음 여부 (기본값 false) |
+
+**유니크 제약**: `(user_id, type, ref_id)` — 동일 조건 알림 중복 생성 방지  
+**인덱스**: `(user_id, is_read)` — 미읽음 알림 카운트 조회  
+
+`ref_id` 형식:
+- D-day: `marathon:{id}:{date}` (예: `marathon:42:2026-04-20`)
+- 배지: `badge:{code}:{year}:{month}` (예: `badge:monthly_100km:2026:4`)
 
 ## 마이그레이션
 

@@ -10,6 +10,7 @@
 | Soft delete | `users`, `marathon_participations`, `activities` 적용 |
 | 타임존 | UTC 저장, 클라이언트에서 로컬 변환 |
 | 배지 시스템 | `badge_definitions` + `user_badges` 두 테이블 구조로 운영 중 |
+| 알림 시스템 | `notifications` 테이블 추가 — D-day·배지 알림 저장 |
 
 ## 적용된 인덱스
 
@@ -66,7 +67,7 @@ date DateTime @db.Date
 
 ### 4. 배지 시스템 확장 계획
 
-현재 `monthly_km` 타입만 자동 sync됩니다. 향후 추가 예정:
+현재 `monthly_km` 타입이 자동 sync되며, 신규 배지 획득 시 알림이 함께 생성됩니다. 향후 추가 예정:
 
 | type | 설명 | sync 시점 |
 |------|------|-----------|
@@ -75,6 +76,10 @@ date DateTime @db.Date
 
 배지 종류는 `badge_definitions` 테이블에 row 추가만 하면 확장됩니다.  
 `prisma/seed.ts`에 정의를 추가한 뒤 `npm run db:seed`를 재실행합니다.
+
+### 5. 알림 테이블 정리 정책 (미적용)
+
+`notifications` 테이블은 현재 삭제 정책이 없습니다. 데이터가 누적될 경우 30일 이상 된 읽음 알림을 정기 삭제하는 정리 Job 추가를 권장합니다.
 
 ## 마이그레이션 전략 전환
 

@@ -111,6 +111,7 @@ export const api = {
   get:    <T>(path: string): Promise<T>            => request('GET', path),
   post:   <T>(path: string, body: unknown)         => request('POST', path, body),
   put:    <T>(path: string, body: unknown)         => request('PUT',  path, body),
+  patch:  <T>(path: string, body: unknown)         => request('PATCH', path, body),
   delete: <T>(path: string): Promise<T>            => request('DELETE', path),
   upload: async <T>(path: string, form: FormData)  => { /* multipart/form-data */ },
 }
@@ -137,8 +138,12 @@ export const api = {
 | POST | `/api/records/import/tcx` | TCX 임포트 (GPS 경로 포함) | 필수 |
 | GET | `/api/stats` | 기간별 통계 (`weekly/monthly/yearly`) | 필수 |
 | GET | `/api/stats/personal-bests` | 최고기록 3종 (거리·시간·페이스) | 필수 |
+| GET | `/api/stats/this-month` | 이번 달 러닝 거리 합계 (km) | 필수 |
 | GET | `/api/badges` | 배지 목록 조회 + 월간 km 배지 sync | 필수 |
+| GET | `/api/notifications` | 알림 목록 + D-day 알림 자동 생성 | 필수 |
+| PATCH | `/api/notifications` | 알림 읽음 처리 (전체 또는 지정 ids) | 필수 |
 | GET | `/api/me` | 내 프로필 | 필수 |
+| DELETE | `/api/me` | 회원 탈퇴 (사용자 데이터 전체 삭제) | 필수 |
 
 ## 배지 Auto-sync
 
@@ -151,6 +156,46 @@ syncMonthlyKmBadges(session.user.id).catch(() => {})  // fire-and-forget
 
 - `await` 없이 백그라운드에서 실행되어 API 응답 속도에 영향 없음
 - `GET /api/badges`에서도 동일 함수를 호출해 최신 상태를 보장
+- 신규 배지 획득 시 `notifications` 테이블에 `type: 'badge'` 알림을 함께 생성
+
+## 알림 (Notifications)
+
+`GET /api/notifications`는 두 단계로 동작합니다.
+
+1. **D-day 알림 생성**: 활성 참가 대회의 대회일을 계산해 D-7·D-1 알림을 upsert (중복 없음)
+2. **목록 반환**: 최신순 30개 + 미읽음 카운트
+
+```ts
+// TopBar.tsx
+const { data: notifData } = useQuery({
+  queryKey: ['notifications'],
+  queryFn: () => api.get('/notifications'),
+  enabled: !!user,
+  refetchInterval: 5 * 60 * 1000,  // 5분 폴링
+})
+
+// 패널 열 때 전체 읽음 처리
+const markReadMut = useMutation({
+  mutationFn: (ids?: number[]) => api.patch('/notifications', ids ? { ids } : {}),
+  onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+})
+```
+
+## 회원 탈퇴
+
+`DELETE /api/me`는 트랜잭션 안에서 사용자의 모든 데이터를 삭제합니다.
+
+```ts
+await prisma.$transaction(async (tx) => {
+  await tx.notification.deleteMany({ where: { userId } })
+  await tx.userBadge.deleteMany({ where: { userId } })
+  await tx.activity.deleteMany({ where: { userId } })
+  await tx.marathonParticipation.deleteMany({ where: { userId } })
+  await tx.user.delete({ where: { id: userId } })
+})
+```
+
+삭제 후 클라이언트에서 `signOut({ callbackUrl: '/' })`을 호출합니다.
 
 ## 파일 업로드 — Supabase Storage
 

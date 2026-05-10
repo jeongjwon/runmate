@@ -21,11 +21,28 @@ export async function syncMonthlyKmBadges(userId: number) {
     const [y, m] = ym.split('-').map(Number)
     for (const def of monthlyKmDefs) {
       if (dist >= def.threshold) {
-        await prisma.userBadge.upsert({
+        const existing = await prisma.userBadge.findUnique({
           where: { userId_badgeId_year_month: { userId, badgeId: def.id, year: y, month: m } },
-          update: {},
-          create: { userId, badgeId: def.id, year: y, month: m },
         })
+
+        if (!existing) {
+          await prisma.userBadge.create({
+            data: { userId, badgeId: def.id, year: y, month: m },
+          })
+
+          const refId = `badge:${def.code}:${y}:${m}`
+          await prisma.notification.upsert({
+            where: { userId_type_refId: { userId, type: 'badge', refId } },
+            update: {},
+            create: {
+              userId,
+              type: 'badge',
+              refId,
+              title: `배지 획득! ${def.icon} ${def.name}`,
+              body: `${y}년 ${m}월 ${def.description}`,
+            },
+          })
+        }
       }
     }
   }
