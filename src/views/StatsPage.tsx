@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Line, Doughnut } from "react-chartjs-2";
 import {
@@ -87,8 +87,6 @@ function buildHeatmap(activities: Activity[]) {
   return weeks;
 }
 
-type StatTab = "전체" | "거리" | "페이스" | "시간";
-
 interface UserBadge {
   id: number;
   year: number | null;
@@ -128,8 +126,6 @@ interface PersonalBests {
 }
 
 export default function StatsPage() {
-  const [activeTab, setActiveTab] = useState<StatTab>("전체");
-
   const { data, isLoading } = useQuery<{ data: Activity[] }>({
     queryKey: ["records"],
     queryFn: () => api.get("/records"),
@@ -250,7 +246,7 @@ export default function StatsPage() {
     x: {
       grid: { display: false },
       border: { display: false },
-      ticks: { color: "#9aaab8", font: { size: 10 } },
+      ticks: { color: "#9aaab8", font: { size: 10 }, maxRotation: 0, autoSkipPadding: 8 },
     },
     y: {
       beginAtZero: true,
@@ -435,13 +431,13 @@ export default function StatsPage() {
       )}
 
       {/* 2×2 grid */}
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid lg:grid-cols-2 gap-4">
         {/* 거리 분포 donut */}
         <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
           <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider mb-4">
             거리 분포
           </h2>
-          <div className="flex items-center gap-5">
+          <div className="flex flex-col lg:flex-row items-center gap-5">
             <div
               className="relative shrink-0"
               style={{ width: 120, height: 120 }}
@@ -480,7 +476,7 @@ export default function StatsPage() {
                 <span className="text-[0.55rem] text-[var(--text3)]">km</span>
               </div>
             </div>
-            <div className="flex-1 space-y-2.5">
+            <div className="w-full lg:flex-1 space-y-2.5">
               {distRanges.labels.map((label, i) => (
                 <div key={label}>
                   <div className="flex items-center justify-between mb-0.5">
@@ -514,7 +510,7 @@ export default function StatsPage() {
 
         {/* 월별 거리 비교 */}
         <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-y-2 mb-4">
             <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider">
               월별 거리 비교
             </h2>
