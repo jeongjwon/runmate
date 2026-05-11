@@ -185,15 +185,14 @@ export default function ParticipationsPage() {
                 className="rounded-2xl overflow-hidden"
                 style={{
                   boxShadow: "0 4px 24px rgba(15,42,61,0.12), 0 1px 6px rgba(15,42,61,0.06)",
-                  height: 180,
                 }}
               >
-                <div className="flex h-full">
+                <div className="flex flex-col sm:flex-row">
 
                   {/* ══ 왼쪽 다크 패널 ══ */}
                   <div
-                    className="relative flex flex-col justify-between px-5 py-4 overflow-hidden"
-                    style={{ width: "42%", background: "#0F2A3D", flexShrink: 0 }}
+                    className="relative flex flex-col justify-between px-4 py-4 overflow-hidden sm:shrink-0 sm:w-[42%]"
+                    style={{ background: "#0F2A3D" }}
                   >
                     {/* 배경 장식 원 */}
                     <div
@@ -215,7 +214,7 @@ export default function ParticipationsPage() {
                     />
 
                     {/* 상단: 뱃지 행 */}
-                    <div className="flex items-center gap-2 relative z-10">
+                    <div className="flex flex-wrap items-center gap-2 relative z-10">
                       <span
                         className="text-[9px] font-black px-2 py-0.5 rounded-full tracking-wide"
                         style={{ background: "#00c896", color: "white" }}
@@ -271,9 +270,16 @@ export default function ParticipationsPage() {
                     </div>
                   </div>
 
-                  {/* ══ 세로 구분선 ══ */}
+                  {/* ══ 모바일 가로 구분선 ══ */}
+                  <div className="sm:hidden flex items-center px-4 py-0" style={{ background: "#0F2A3D" }}>
+                    <div className="w-3 h-3 rounded-full shrink-0 -ml-4" style={{ background: "#f5f6f8", border: "1.5px solid #dde1e7" }} />
+                    <div className="flex-1 mx-1" style={{ borderTop: "2px dashed rgba(255,255,255,0.2)" }} />
+                    <div className="w-3 h-3 rounded-full shrink-0 -mr-4" style={{ background: "#f5f6f8", border: "1.5px solid #dde1e7" }} />
+                  </div>
+
+                  {/* ══ 세로 구분선 (데스크톱) ══ */}
                   <div
-                    className="relative shrink-0 flex flex-col items-center py-4"
+                    className="relative shrink-0 hidden sm:flex flex-col items-center py-4"
                     style={{
                       width: 20,
                       background: "linear-gradient(to right, #0F2A3D 50%, #ffffff 50%)",
@@ -305,7 +311,7 @@ export default function ParticipationsPage() {
                   </div>
 
                   {/* ══ 오른쪽 흰 패널 ══ */}
-                  <div className="flex-1 bg-white flex flex-col justify-between px-5 py-4">
+                  <div className="flex-1 bg-white flex flex-col justify-between px-4 py-4 gap-3">
 
                     {/* 상단: FINISH TIME */}
                     <div>
@@ -360,7 +366,7 @@ export default function ParticipationsPage() {
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => openEdit(p)}
-                        className="flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-colors hover:bg-[var(--surface2)]"
+                        className="flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-colors hover:bg-[var(--surface2)] whitespace-nowrap"
                         style={{ borderColor: "#e8eaed", color: "#5a6e7e" }}
                       >
                         기록 수정
@@ -370,7 +376,7 @@ export default function ParticipationsPage() {
                           href={p.certificateUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors"
+                          className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors whitespace-nowrap"
                           style={{ borderColor: "rgba(0,200,150,0.35)", color: "#00c896" }}
                         >
                           <i className="fas fa-medal text-[9px]" />기록증
@@ -384,7 +390,7 @@ export default function ParticipationsPage() {
                             () => delMut.mutate(p.id),
                           )
                         }
-                        className="px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors"
+                        className="px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors whitespace-nowrap"
                         style={{ borderColor: "#fca5a5", color: "#ef4444" }}
                         onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#fef2f2"; }}
                         onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
