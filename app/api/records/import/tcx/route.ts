@@ -101,13 +101,14 @@ export async function POST(req: NextRequest) {
 
   const r = await prisma.activity.create({
     data: {
-      userId:    session.user.id,
+      userId:      session.user.id,
       date,
-      distance:  distKm,
-      duration:  durSec,
-      pace:      calcPace(distKm, durSec),
-      heartRate: avgHR,
-      calories:  totalCal,
+      distance:    distKm,
+      duration:    durSec,
+      pace:        calcPace(distKm, durSec),
+      paceSeconds: distKm > 0 ? Math.round(durSec / distKm) : 0,
+      heartRate:   avgHR,
+      calories:    totalCal,
       routeType,
       weather,
       notes,
