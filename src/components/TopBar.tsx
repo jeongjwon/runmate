@@ -132,7 +132,7 @@ export default function TopBar() {
             </button>
 
             {notifOpen && (
-              <div className="absolute right-0 top-full mt-1.5 w-80 bg-white border border-[var(--border)] rounded-2xl shadow-lg overflow-hidden z-50">
+              <div className="fixed inset-x-3 top-[68px] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-1.5 sm:w-80 bg-white border border-[var(--border)] rounded-2xl shadow-lg overflow-hidden z-50">
                 <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
                   <p className="text-xs font-bold text-[var(--navy)]">알림</p>
                   {notifications.some((n) => !n.isRead) && (
@@ -145,7 +145,7 @@ export default function TopBar() {
                   )}
                 </div>
 
-                <div className="max-h-72 overflow-y-auto">
+                <div className="max-h-[50vh] sm:max-h-72 overflow-y-auto">
                   {notifications.length === 0 ? (
                     <p className="text-xs text-[var(--text3)] text-center py-8">
                       알림이 없습니다

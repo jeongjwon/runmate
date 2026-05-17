@@ -655,8 +655,12 @@ export default function StatsPage() {
                   y: {
                     ...lineScales.y,
                     reverse: true,
+                    beginAtZero: false,
+                    min: 4.5,
+                    max: 9.0,
                     ticks: {
                       ...lineScales.y.ticks,
+                      stepSize: 0.5,
                       callback: (v: any) => {
                         const min = Math.floor(v);
                         const sec = Math.round((v - min) * 60);
