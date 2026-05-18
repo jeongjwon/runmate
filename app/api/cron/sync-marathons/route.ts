@@ -10,12 +10,20 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  const startedAt = new Date().toISOString()
+  console.log(`[cron] sync-marathons started at ${startedAt}`)
+
   try {
+    const t0 = Date.now()
     const result = await crawlAndSync()
-    console.log('[cron] sync-marathons:', result.message)
-    return NextResponse.json(result)
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(2)
+
+    console.log(
+      `[cron] sync-marathons done | added=${result.added} updated=${result.updated} elapsed=${elapsed}s`,
+    )
+    return NextResponse.json({ ...result, startedAt, elapsed: `${elapsed}s` })
   } catch (e: any) {
-    console.error('[cron] sync-marathons error:', e.message)
-    return NextResponse.json({ error: e.message }, { status: 500 })
+    console.error(`[cron] sync-marathons failed at ${startedAt} | error=${e.message}`)
+    return NextResponse.json({ error: e.message, startedAt }, { status: 500 })
   }
 }
