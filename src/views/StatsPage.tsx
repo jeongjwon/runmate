@@ -218,20 +218,14 @@ export default function StatsPage() {
 
   const heatmapWeeks = useMemo(() => buildHeatmap(activities), [activities]);
 
-  // 배지를 월별로 그룹핑 (월간 km 배지만)
-  const badgesByMonth = useMemo(() => {
-    const monthlyBadges = userBadges.filter(
-      (b) => b.badge.type === "monthly_km" && b.year && b.month,
-    );
-    const grouped: Record<string, UserBadge[]> = {};
-    for (const b of monthlyBadges) {
-      const key = `${b.year}-${String(b.month!).padStart(2, "0")}`;
-      if (!grouped[key]) grouped[key] = [];
-      grouped[key].push(b);
-    }
-    return Object.entries(grouped)
-      .sort(([a], [b]) => b.localeCompare(a))
-      .slice(0, 6);
+  const monthlyBadgesFlat = useMemo(() => {
+    return userBadges
+      .filter((b) => b.badge.type === "monthly_km" && b.year && b.month)
+      .sort((a, b) => {
+        const aKey = `${a.year}-${String(a.month!).padStart(2, "0")}`;
+        const bKey = `${b.year}-${String(b.month!).padStart(2, "0")}`;
+        return bKey.localeCompare(aKey);
+      });
   }, [userBadges]);
 
   const tooltipBase = {
@@ -382,47 +376,41 @@ export default function StatsPage() {
       </div>
 
       {/* ── 월간 마일스톤 배지 ── */}
-      {badgesByMonth.length > 0 && (
+      {monthlyBadgesFlat.length > 0 && (
         <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
           <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider mb-4">
             월간 마일스톤 배지
           </h2>
-          <div className="space-y-3">
-            {badgesByMonth.map(([ym, badges]) => {
-              const [y, m] = ym.split("-");
+          <div
+            className="flex gap-3 overflow-x-auto pb-1"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {monthlyBadgesFlat.map((ub) => {
+              const meta = BADGE_META[ub.badge.code] ?? {
+                color: "#9aaab8",
+                bg: "#f5f5f5",
+              };
               return (
-                <div key={ym}>
-                  <p className="text-[10px] font-semibold text-[var(--text3)] mb-1.5">
-                    {y}년 {parseInt(m)}월
+                <div
+                  key={ub.id}
+                  className="flex flex-col items-center shrink-0 w-[72px] py-3 px-2 rounded-xl"
+                  style={{
+                    background: meta.bg,
+                    border: `1px solid ${meta.color}22`,
+                  }}
+                >
+                  <span className="text-3xl leading-none mb-2">
+                    {ub.badge.icon}
+                  </span>
+                  <p
+                    className="text-[10px] font-bold text-center leading-tight"
+                    style={{ color: meta.color }}
+                  >
+                    {ub.badge.name}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    {badges
-                      .sort((a, b) => a.badge.threshold - b.badge.threshold)
-                      .map((ub) => {
-                        const meta = BADGE_META[ub.badge.code] ?? {
-                          color: "#9aaab8",
-                          bg: "#f5f5f5",
-                        };
-                        return (
-                          <div
-                            key={ub.id}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
-                            style={{
-                              background: meta.bg,
-                              color: meta.color,
-                              border: `1px solid ${meta.color}22`,
-                            }}
-                          >
-                            <span>{ub.badge.icon}</span>
-                            <span>{ub.badge.name}</span>
-                            <span className="opacity-60 text-[10px]">
-                              {ub.badge.threshold}
-                              {ub.badge.unit}
-                            </span>
-                          </div>
-                        );
-                      })}
-                  </div>
+                  <p className="text-[9px] text-[var(--text3)] mt-1 text-center">
+                    {ub.year}년 {ub.month}월
+                  </p>
                 </div>
               );
             })}
