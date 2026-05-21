@@ -180,7 +180,7 @@ function RecordForm({
 }) {
   const { showSnackbar } = useUI();
   const [form, setForm] = useState({
-    date: record?.date ?? new Date().toISOString().split("T")[0],
+    date: record?.date ?? toDateStr(new Date()),
     distance: record?.distance ?? "",
     h: record ? Math.floor(record.duration / 3600) : 0,
     m: record ? Math.floor((record.duration % 3600) / 60) : 0,
@@ -644,17 +644,22 @@ export default function ActivityPage() {
     [period, allRecords],
   );
 
+  const invalidateRecords = () => {
+    qc.invalidateQueries({ queryKey: ["records"] });
+    qc.invalidateQueries({ queryKey: ["this-month-km"] });
+  };
+
   const deleteMut = useMutation({
     mutationFn: (id: number) => api.delete(`/records/${id}`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["records"] });
+      invalidateRecords();
       showSnackbar("기록이 삭제되었습니다");
       setSelectedActivity(null);
     },
     onError: (e: Error) => showSnackbar(e.message, "error"),
   });
 
-  const reload = () => qc.invalidateQueries({ queryKey: ["records"] });
+  const reload = invalidateRecords;
 
   const handleTCX = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
