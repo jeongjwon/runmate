@@ -135,14 +135,12 @@ export default function StatsPage() {
   const { data: badgesData } = useQuery<{ data: UserBadge[] }>({
     queryKey: ["badges"],
     queryFn: () => api.get("/badges"),
-    enabled: activities.length > 0,
   });
   const userBadges = badgesData?.data ?? [];
 
   const { data: pbData } = useQuery<{ data: PersonalBests }>({
     queryKey: ["personal-bests"],
     queryFn: () => api.get("/stats/personal-bests"),
-    enabled: activities.length > 0,
   });
   const pbs = pbData?.data;
 

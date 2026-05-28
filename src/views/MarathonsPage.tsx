@@ -32,6 +32,7 @@ const CITIES = [
   "제주도",
 ];
 const CATS = ["전체", "5K", "10K", "Half", "Full"];
+const MONTHS = ["전체", "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
 const PAGE_SIZE = 12;
 
 export default function MarathonsPage() {
@@ -40,8 +41,11 @@ export default function MarathonsPage() {
   const { data: session } = useSession();
   const [city, setCity] = useState("전체");
   const [cat, setCat] = useState("전체");
+  const [month, setMonth] = useState(0);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
   const { data, isLoading } = useQuery<MarathonsResponse>({
     queryKey: ["marathons", city, cat],
@@ -54,36 +58,80 @@ export default function MarathonsPage() {
   });
 
   const participationMap = data?.participationMap ?? {};
-  const filtered = useMemo(
-    () =>
-      (data?.data ?? []).filter(
-        (m) => !search || m.name.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [data, search],
+  const filtered = useMemo(() => {
+    const list = (data?.data ?? []).filter((m) => {
+      if (search && !m.name.toLowerCase().includes(search.toLowerCase())) return false;
+      if (month > 0) {
+        const mMonth = parseInt(m.date.split("-")[1], 10);
+        if (mMonth !== month) return false;
+      }
+      return true;
+    });
+
+    // 다가오는 대회 먼저(가까운 순), 지난 대회는 뒤에(최근 순)
+    list.sort((a, b) => {
+      const aFuture = a.date >= today;
+      const bFuture = b.date >= today;
+      if (aFuture && bFuture) return a.date < b.date ? -1 : 1;
+      if (!aFuture && !bFuture) return b.date < a.date ? -1 : 1;
+      return aFuture ? -1 : 1;
+    });
+
+    return list;
+  }, [data, search, month, today]);
+
+  const upcomingCount = useMemo(
+    () => (data?.data ?? []).filter((m) => m.date >= today).length,
+    [data, today],
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const marathons = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  useEffect(() => { setPage(1); }, [city, cat, search]);
+  useEffect(() => { setPage(1); }, [city, cat, search, month]);
 
   const addMut = useMutation({
     mutationFn: (id: number) => api.post(`/participations/${id}`, {}),
+    onMutate: async (id: number) => {
+      await qc.cancelQueries({ queryKey: ["marathons", city, cat] });
+      const previous = qc.getQueryData<MarathonsResponse>(["marathons", city, cat]);
+      qc.setQueryData<MarathonsResponse>(["marathons", city, cat], (old) =>
+        old ? { ...old, participationMap: { ...old.participationMap, [id]: { id: -1, category: "" } } } : old,
+      );
+      return { previous };
+    },
+    onError: (e: Error, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["marathons", city, cat], ctx.previous);
+      showSnackbar(e.message, "error");
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["marathons"] });
       qc.invalidateQueries({ queryKey: ["participations"] });
       showSnackbar("내 마라톤에 추가되었습니다");
     },
-    onError: (e: Error) => showSnackbar(e.message, "error"),
   });
   const delMut = useMutation({
     mutationFn: (id: number) => api.delete(`/participations/${id}`),
+    onMutate: async (id: number) => {
+      await qc.cancelQueries({ queryKey: ["marathons", city, cat] });
+      const previous = qc.getQueryData<MarathonsResponse>(["marathons", city, cat]);
+      qc.setQueryData<MarathonsResponse>(["marathons", city, cat], (old) => {
+        if (!old) return old;
+        const map = { ...old.participationMap };
+        delete map[id];
+        return { ...old, participationMap: map };
+      });
+      return { previous };
+    },
+    onError: (e: Error, _id, ctx) => {
+      if (ctx?.previous) qc.setQueryData(["marathons", city, cat], ctx.previous);
+      showSnackbar(e.message, "error");
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["marathons"] });
       qc.invalidateQueries({ queryKey: ["participations"] });
       showSnackbar("내 마라톤에서 제거되었습니다");
     },
-    onError: (e: Error) => showSnackbar(e.message, "error"),
   });
 
   const toggle = (m: Marathon) => {
@@ -108,7 +156,7 @@ export default function MarathonsPage() {
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* 헤더 */}
       <div>
         <h1 className="text-xl font-bold text-[var(--navy)]">마라톤 일정</h1>
@@ -117,41 +165,76 @@ export default function MarathonsPage() {
         </p>
       </div>
 
-      {/* 필터 */}
-      <div className="flex flex-wrap gap-2">
-        <select
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          className="input-dark w-auto text-sm"
-        >
-          {CITIES.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-        <select
-          value={cat}
-          onChange={(e) => setCat(e.target.value)}
-          className="input-dark w-auto text-sm"
-        >
-          {CATS.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
-        </select>
-        <div className="relative flex-1 min-w-[180px]">
-          <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text3)] text-xs pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="대회명 검색"
-            className="input-dark w-full pl-9 text-sm"
-          />
-        </div>
-        {!isLoading && (
-          <div className="flex items-center self-center ml-auto text-xs text-[var(--text3)]">
-            {filtered.length}개 대회
-          </div>
+      {/* 카운트 배너 */}
+      <div className="bg-white rounded-2xl border border-[var(--border)] px-5 py-4 flex items-center gap-3">
+        {isLoading ? (
+          <div className="h-8 w-40 bg-[var(--surface2)] rounded-lg animate-pulse" />
+        ) : (
+          <>
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-3xl font-bold text-[var(--mint)] tabular-nums">
+                {search || month > 0 ? filtered.length : (data?.data.length ?? 0)}
+              </span>
+              <span className="text-sm font-medium text-[var(--text2)]">
+                {search || month > 0 ? "개 검색됨" : "개 대회"}
+              </span>
+              {(search || month > 0) && (
+                <span className="text-xs text-[var(--text3)] ml-0.5">
+                  / 전체 {data?.data.length ?? 0}개
+                </span>
+              )}
+            </div>
+            <div className="h-7 w-px bg-[var(--border)] mx-1" />
+            <div className="flex items-center gap-1.5 text-xs text-[var(--text3)]">
+              <span className="inline-block w-2 h-2 rounded-full bg-emerald-400" />
+              다가오는 대회
+              <span className="font-semibold text-[var(--text2)] ml-0.5">{upcomingCount}개</span>
+            </div>
+          </>
         )}
+      </div>
+
+      {/* 필터 */}
+      <div className="bg-white rounded-2xl border border-[var(--border)] p-3">
+        <div className="flex flex-wrap gap-2">
+          <select
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            className="input-dark w-auto text-sm"
+          >
+            {CITIES.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            value={cat}
+            onChange={(e) => setCat(e.target.value)}
+            className="input-dark w-auto text-sm"
+          >
+            {CATS.map((c) => (
+              <option key={c}>{c}</option>
+            ))}
+          </select>
+          <select
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+            className="input-dark w-auto text-sm"
+          >
+            {MONTHS.map((m, i) => (
+              <option key={m} value={i}>{m}</option>
+            ))}
+          </select>
+          <div className="relative flex-1 min-w-[180px]">
+            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text3)] text-xs pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="대회명 검색"
+              className="input-dark w-full pl-9 text-sm"
+            />
+          </div>
+        </div>
       </div>
 
       {/* 목록 */}
@@ -176,6 +259,11 @@ export default function MarathonsPage() {
                   .map((c) => c.trim())
                   .filter(Boolean)
               : [];
+            const isPast = m.date < today;
+            const statusLabel = isPast ? "대회 마감" : "대회 전";
+            const statusClass = isPast
+              ? "bg-gray-100 text-gray-400"
+              : "bg-emerald-50 text-emerald-600";
 
             return (
               <div
@@ -183,13 +271,23 @@ export default function MarathonsPage() {
                 className="bg-white rounded-2xl border border-[var(--border)] flex flex-col hover:shadow-md transition-shadow"
               >
                 <div className="px-4 pt-4 pb-3">
-                  {/* 상단: 카테고리 + 상태 */}
+                  {/* 상단: 상태 + 하트 */}
                   <div className="flex items-center justify-between mb-2.5">
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${m.isActive ? "bg-emerald-50 text-emerald-600" : "bg-gray-100 text-gray-400"}`}
-                    >
-                      {m.isActive ? "모집중" : "마감"}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusClass}`}>
+                      {statusLabel}
                     </span>
+                    <button
+                      onClick={() => toggle(m)}
+                      className="group w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] transition-all duration-200 active:scale-90"
+                      aria-label={inMy ? "내 마라톤에서 제거" : "내 마라톤에 추가"}
+                    >
+                      <i
+                        className={`${inMy ? "fas" : "far"} fa-heart text-base transition-all duration-200 ${
+                          inMy ? "scale-110" : "text-[var(--text3)] group-hover:text-[#FFE100]"
+                        }`}
+                        style={inMy ? { color: "#FFE100", filter: "drop-shadow(0 0 6px rgba(255,225,0,0.65))" } : {}}
+                      />
+                    </button>
                   </div>
 
                   {/* 대회명 */}
@@ -223,39 +321,19 @@ export default function MarathonsPage() {
                   </div>
                 </div>
 
-                {/* 버튼 */}
-                <div className="px-4 pb-4 flex gap-2 mt-auto">
-                  {m.officialUrl && (
+                {/* 홈페이지 버튼 */}
+                {m.officialUrl && (
+                  <div className="px-4 pb-4 mt-auto">
                     <a
                       href={m.officialUrl}
                       target="_blank"
                       rel="noreferrer"
-                      className="btn-outline flex-1 text-center text-xs py-1.5"
+                      className="btn-outline w-full text-center text-xs py-1.5 block"
                     >
                       홈페이지
                     </a>
-                  )}
-                  <button
-                    onClick={() => toggle(m)}
-                    className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-colors ${
-                      inMy
-                        ? "bg-[var(--mint)] text-white"
-                        : "border border-[var(--border)] text-[var(--text2)] hover:bg-[var(--surface2)]"
-                    }`}
-                  >
-                    {inMy ? (
-                      <>
-                        <i className="fas fa-check mr-1" />
-                        추가됨
-                      </>
-                    ) : (
-                      <>
-                        <i className="fas fa-plus mr-1" />
-                        추가
-                      </>
-                    )}
-                  </button>
-                </div>
+                  </div>
+                )}
               </div>
             );
           })}
