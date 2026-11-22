@@ -35,6 +35,7 @@ runmate/
 │   ├── participations/       # 내 마라톤
 │   ├── stats/                # 통계 & 배지
 │   ├── about/, contact/, privacy/, terms/
+│   ├── oauth/authorize/      # Claude 커넥터 연결 동의 화면
 │   └── api/                  # Route Handlers
 │       ├── auth/[...nextauth]/
 │       ├── marathons/        # 목록, sync(크롤링)
@@ -43,7 +44,11 @@ runmate/
 │       ├── stats/
 │       ├── badges/
 │       ├── notifications/
-│       └── me/
+│       ├── plans/            # 훈련 계획
+│       ├── shoes/            # 신발 관리
+│       ├── mcp/              # Claude 커넥터용 MCP 엔드포인트
+│       ├── oauth/            # MCP용 OAuth (등록 · 인가 · 토큰)
+│       └── me/               # 내 정보, Claude 연결 목록/해제
 │
 └── src/                      # 공통 모듈
     ├── components/
@@ -99,6 +104,14 @@ npm run dev
 | GET | `/api/badges` | 배지 목록 |
 | GET/PATCH | `/api/notifications` | 알림 목록 / 읽음 처리 |
 | GET/DELETE | `/api/me` | 내 정보 / 회원 탈퇴 |
+| GET | `/api/plans?from=&to=` | 훈련 계획 목록 |
+| PUT/DELETE | `/api/plans/:date` | 계획 저장·완료 표시 / 삭제 |
+| GET/POST | `/api/shoes` | 신발 목록(누적 거리) / 추가 |
+| PUT/DELETE | `/api/shoes/:id` | 신발 수정 / 삭제 |
+| GET | `/api/me/connections` | Claude 연결 목록 |
+| DELETE | `/api/me/connections/:id` | Claude 연결 해제 |
+| POST | `/api/mcp` | Claude 커넥터용 MCP (Bearer 토큰) |
+| POST | `/api/oauth/register\|authorize\|token` | MCP용 OAuth |
 
 ## 주요 주의사항
 
@@ -112,6 +125,11 @@ curl -X POST http://localhost:3000/api/marathons/sync
 ```
 roadrun.co.kr에서 EUC-KR HTML 가져와 파싱 후 DB upsert.
 첫 페이지 로드 시 DB가 비어있으면 자동 sync 실행됨.
+
+**Claude 연동 (MCP)**
+커넥터 주소는 `https://<배포 도메인>/api/mcp`. Claude 설정 › 커넥터 › 커스텀 커넥터 추가에 입력.
+OAuth 서버가 앱에 내장되어 있고 토큰은 `NEXTAUTH_SECRET`으로 서명 — 시크릿을 바꾸면 Claude 연결이 끊김.
+도구 정의는 `src/lib/mcpTools.ts`, 토큰 처리는 `src/lib/mcpAuth.ts`. 자세한 내용은 `docs/auth.md`.
 
 **인증 흐름**
 NextAuth.js JWT 전략 사용. 세션은 쿠키 기반이며 `getServerSession()`으로 서버 컴포넌트/Route Handler에서 접근.

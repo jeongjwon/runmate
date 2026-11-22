@@ -36,6 +36,7 @@ runmate/
 │   ├── contact/page.tsx        # 문의 · FAQ (정적 서버 컴포넌트)
 │   ├── privacy/page.tsx        # 개인정보처리방침 (정적 서버 컴포넌트)
 │   ├── terms/page.tsx          # 이용약관 (정적 서버 컴포넌트)
+│   ├── oauth/authorize/page.tsx # Claude 커넥터 연결 동의 화면
 │   └── api/                    # Route Handlers (REST API)
 │       ├── auth/[...nextauth]/ # NextAuth 핸들러
 │       ├── marathons/          # 마라톤 목록 · 상세 · 동기화
@@ -44,14 +45,19 @@ runmate/
 │       ├── badges/             # 배지 조회 및 월간 km 자동 sync
 │       ├── notifications/      # 알림 목록 조회 · 읽음 처리
 │       ├── stats/              # 기간별 통계 · 개인 최고기록 · 이번 달 km
-│       └── me/                 # 내 프로필 · 회원 탈퇴
+│       ├── plans/              # 훈련 계획 조회 · 저장 · 삭제
+│       ├── shoes/              # 신발 CRUD + 누적 거리
+│       ├── me/                 # 내 프로필 · 회원 탈퇴 · Claude 연결 목록/해제
+│       ├── mcp/                # Claude 커넥터용 MCP 엔드포인트 (JSON-RPC)
+│       └── oauth/              # MCP용 OAuth (메타데이터 · 등록 · 인가 · 토큰)
 │
 ├── src/
 │   ├── views/                  # 페이지 수준 클라이언트 컴포넌트
 │   │   ├── MarathonsPage.tsx
 │   │   ├── ParticipationsPage.tsx
 │   │   ├── ActivityPage.tsx
-│   │   └── StatsPage.tsx
+│   │   ├── StatsPage.tsx
+│   │   └── McpAuthorizePage.tsx # Claude 연결 동의 화면 (로그인 · 허용/거부)
 │   ├── components/             # 공유 UI 컴포넌트
 │   │   ├── Nav.tsx
 │   │   ├── TopBar.tsx          # 우측 상단바 (알림 벨 · 프로필 드롭다운)
@@ -59,7 +65,14 @@ runmate/
 │   │   ├── Providers.tsx       # QueryClient + SessionProvider
 │   │   ├── ConfirmModal.tsx
 │   │   ├── Snackbar.tsx        # 우측 상단 토스트 알림
-│   │   └── LoginModal.tsx      # 블러 오버레이 소셜 로그인 모달
+│   │   ├── LoginModal.tsx      # 블러 오버레이 소셜 로그인 모달
+│   │   ├── ActivityCalendar.tsx # 활동 페이지 월간 캘린더 + 선택한 날 패널
+│   │   ├── RunTypePicker.tsx   # 훈련 종류 선택 버튼 (기록 폼 · TCX 결과 모달 공용)
+│   │   ├── TcxImportModal.tsx  # TCX 업로드 결과 + 훈련 종류 · 신발 선택 모달
+│   │   ├── WeekPlanCard.tsx    # 주간 훈련 계획 카드 (완료 체크)
+│   │   ├── PlanEditModal.tsx   # 주간 훈련 계획 편집 모달
+│   │   ├── ShoesCard.tsx       # 신발 목록 · 누적 거리 · 추가/수정 모달
+│   │   └── ClaudeConnectModal.tsx # Claude 연동 안내 · 커넥터 주소 · 연결 해제
 │   ├── context/
 │   │   └── UIContext.tsx       # 스낵바 · 확인 모달 · 로그인 모달 전역 상태
 │   ├── lib/
@@ -68,6 +81,10 @@ runmate/
 │   │   ├── prisma.ts           # Prisma 싱글턴
 │   │   ├── supabase.ts         # Supabase 클라이언트
 │   │   ├── syncBadges.ts       # 월간 km 배지 sync 공유 로직
+│   │   ├── plans.ts            # 훈련 계획 검증 · 저장 (REST · MCP 공용)
+│   │   ├── shoes.ts            # 신발 목록 + 누적 거리 계산, shoe_id 검증
+│   │   ├── mcpAuth.ts          # MCP용 OAuth (클라이언트 등록 · 코드 · 토큰 서명/검증)
+│   │   ├── mcpTools.ts         # MCP 도구 정의 · 실행
 │   │   └── utils.ts            # 공통 유틸 (formatDuration, calcPace 등)
 │   ├── services/
 │   │   └── crawler.ts          # roadrun.co.kr EUC-KR 크롤러
@@ -132,12 +149,30 @@ runmate/
 `GET /api/marathons` 최초 호출 시 DB가 비어 있으면 자동으로 크롤링을 실행합니다.  
 수동 동기화는 `POST /api/marathons/sync`로 트리거합니다.
 
+## Claude 연동 (MCP)
+
+Claude(웹·데스크톱·모바일)에 RunMate를 커스텀 커넥터로 추가하면, 대화에서 만든 훈련 계획과 러닝 기록이 RunMate DB에 바로 저장됩니다.
+
+```
+Claude ──(OAuth 2.1 + PKCE)──▶ /api/oauth/*  ──▶ mcp_grants
+Claude ──(Bearer 토큰, JSON-RPC)──▶ /api/mcp ──▶ src/lib/mcpTools.ts ──▶ Prisma
+                                                        │
+활동 페이지 ◀── GET /api/plans · /api/records · /api/shoes ◀──┘ (같은 테이블)
+```
+
+- 커넥터 주소: `https://{도메인}/api/mcp` (프로필 메뉴 › Claude 연동에서 복사)
+- 별도 MCP 서버나 SDK 없이 Route Handler 하나로 처리합니다. 세션 상태가 없어 Vercel 서버리스에서 그대로 동작합니다.
+- 인가 서버도 RunMate 안에 있습니다. 추가 환경 변수 없이 `NEXTAUTH_SECRET`으로 토큰을 서명합니다. 자세한 내용은 [auth.md](auth.md#claude-커넥터-oauth-mcp).
+- 도구 목록은 [data-layer.md](data-layer.md#claude-연동-mcp) 참고.
+- Claude에서 저장한 내용은 활동 페이지를 열거나 탭으로 돌아올 때 반영됩니다 (실시간 푸시 없음).
+- 배포 환경의 방화벽·봇 차단이 Anthropic 서버(`160.79.104.0/21`)의 `/api/mcp`, `/api/oauth/*`, `/.well-known/*` 요청을 막지 않아야 합니다.
+
 ## 환경 변수
 
 | 키 | 설명 |
 |----|------|
 | `DATABASE_URL` | Supabase PostgreSQL Session pooler URL |
-| `NEXTAUTH_SECRET` | JWT 서명 시크릿 |
+| `NEXTAUTH_SECRET` | JWT 서명 시크릿. Claude 커넥터 토큰 서명에도 사용 (바꾸면 Claude 연결이 끊김) |
 | `NEXTAUTH_URL` | 배포 도메인 (예: `https://runmate.vercel.app`) |
 | `GOOGLE_CLIENT_ID/SECRET` | Google OAuth |
 | `KAKAO_CLIENT_ID/SECRET` | Kakao OAuth |

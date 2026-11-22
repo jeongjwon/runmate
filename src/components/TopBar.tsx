@@ -6,6 +6,7 @@ import { signOut } from "next-auth/react";
 import { api } from "@/src/lib/api";
 import { User } from "@/src/types";
 import { useUI } from "@/src/context/UIContext";
+import ClaudeConnectModal from "@/src/components/ClaudeConnectModal";
 
 interface Notification {
   id: number;
@@ -42,6 +43,7 @@ export default function TopBar() {
   const qc = useQueryClient();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [claudeOpen, setClaudeOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
@@ -259,6 +261,16 @@ export default function TopBar() {
                   <button
                     onClick={() => {
                       setProfileOpen(false);
+                      setClaudeOpen(true);
+                    }}
+                    className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[var(--text2)] hover:bg-[var(--surface2)] transition-colors font-semibold"
+                  >
+                    <i className="fas fa-plug w-3.5 text-center text-[var(--text3)]" />
+                    Claude 연동
+                  </button>
+                  <button
+                    onClick={() => {
+                      setProfileOpen(false);
                       signOut({ callbackUrl: "/" });
                     }}
                     className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs text-[var(--text2)] hover:bg-[var(--surface2)] transition-colors font-semibold"
@@ -278,6 +290,10 @@ export default function TopBar() {
             )}
           </div>
         </>
+      )}
+
+      {user && claudeOpen && (
+        <ClaudeConnectModal onClose={() => setClaudeOpen(false)} />
       )}
 
       {!user && (

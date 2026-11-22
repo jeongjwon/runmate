@@ -22,6 +22,9 @@ model User {
   records        Activity[]
   userBadges     UserBadge[]
   notifications  Notification[]
+  shoes          Shoe[]
+  trainingPlans  TrainingPlan[]
+  mcpGrants      McpGrant[]
   @@unique([provider, providerId])
   @@map("users")
 }
@@ -73,18 +76,66 @@ model Activity {
   pace        String    @default("")
   paceSeconds Int       @default(0) @map("pace_seconds")
   heartRate   Int       @default(0) @map("heart_rate")
+  maxHeartRate Int      @default(0) @map("max_heart_rate")
   calories    Int       @default(0)
   routeType   String    @default("road") @map("route_type")
+  runType     String    @default("") @map("run_type") // "" | "easy" | "long" | "tempo" | "interval" | "race"
   weather     String    @default("")
   notes       String    @default("")
   marathonId  Int?      @map("marathon_id")
   routeData   String    @default("") @map("route_data")
+  shoeId      Int?      @map("shoe_id")
   user User? @relation(fields: [userId], references: [id])
+  shoe Shoe? @relation(fields: [shoeId], references: [id], onDelete: SetNull)
   @@index([userId, distance])
   @@index([userId, duration])
   @@index([userId, paceSeconds])
   @@index([userId, date])
+  @@index([shoeId])
   @@map("activities")
+}
+
+model Shoe {
+  id         Int        @id @default(autoincrement())
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  userId     Int        @map("user_id")
+  name       String
+  startKm    Float      @default(0) @map("start_km") // 등록 전에 이미 달린 거리
+  retiredAt  DateTime?  @map("retired_at")
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activities Activity[]
+  @@index([userId])
+  @@map("shoes")
+}
+
+model TrainingPlan {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  userId    Int      @map("user_id")
+  date      String   // "YYYY-MM-DD", 하루에 계획 하나
+  kind      String   @default("run") // "run" | "strength" | "both" | "rest"
+  title     String   @default("")
+  detail    String   @default("")
+  done      Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([userId, date])
+  @@map("training_plans")
+}
+
+// Claude 커넥터(MCP) 연결 1건. 토큰 원문은 저장하지 않고 해시만 보관
+model McpGrant {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now()) @map("created_at")
+  userId      Int       @map("user_id")
+  clientName  String    @default("") @map("client_name")
+  codeId      String    @unique @map("code_id")      // 인가 코드 1회 사용 보장
+  refreshHash String    @unique @map("refresh_hash") // 리프레시 토큰 SHA-256
+  lastUsedAt  DateTime? @map("last_used_at")
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+  @@map("mcp_grants")
 }
 
 model BadgeDefinition {

@@ -28,6 +28,8 @@ function withFormatted(r: any) {
 
 // POST /api/records/import/tcx
 // multipart/form-data 로 TCX 파일을 받아 파싱 후 activity로 저장
+// 요청 1번에 파일 1개. 여러 파일은 클라이언트가 파일마다 따로 요청함
+// 이미 같은 기록이 있으면 저장하지 않고 200 + { duplicate: true } 로 응답
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -48,6 +50,7 @@ export async function POST(req: NextRequest) {
   }
 
   const routeType = (formData.get('route_type') as string) || 'road'
+  const runType   = (formData.get('run_type')   as string) || ''
   const weather   = (formData.get('weather')    as string) || ''
   const notes     = (formData.get('notes')      as string) || ''
 
@@ -76,6 +79,7 @@ export async function POST(req: NextRequest) {
   }
 
   let totalTimeSec = 0, totalDistM = 0, totalCal = 0, hrSum = 0, hrCount = 0
+  let maxHR = 0, lapMaxHR = 0             // 최고 심박: Trackpoint 기준 / Lap 요약값 기준
   const allPts: [number, number][] = []   // 전체 GPS 좌표 [lat, lng]
 
   // 모든 Lap을 순회하며 시간·거리·칼로리·심박·GPS 좌표를 누적
@@ -83,6 +87,7 @@ export async function POST(req: NextRequest) {
     totalTimeSec += Number(lap.TotalTimeSeconds) || 0
     totalDistM   += Number(lap.DistanceMeters)   || 0
     totalCal     += Number(lap.Calories)          || 0
+    lapMaxHR      = Math.max(lapMaxHR, Number(lap.MaximumHeartRateBpm?.Value) || 0)
 
     // Trackpoint: 1초 단위로 기록된 GPS 측정점 (수천 개 존재 가능)
     // 단일 Trackpoint인 경우에도 배열로 정규화
@@ -90,7 +95,7 @@ export async function POST(req: NextRequest) {
     const tps = Array.isArray(trackpoints) ? trackpoints : [trackpoints].filter(Boolean)
     for (const tp of tps) {
       const hr = Number(tp?.HeartRateBpm?.Value) || 0
-      if (hr > 0) { hrSum += hr; hrCount++ }
+      if (hr > 0) { hrSum += hr; hrCount++; if (hr > maxHR) maxHR = hr }
 
       const lat = Number(tp?.Position?.LatitudeDegrees)
       const lng = Number(tp?.Position?.LongitudeDegrees)
@@ -118,6 +123,25 @@ export async function POST(req: NextRequest) {
   const durSec = Math.round(totalTimeSec)
   const avgHR  = hrCount > 0 ? Math.round(hrSum / hrCount) : 0
 
+  // 중복 방지: 같은 날짜·거리·시간의 기록이 이미 있으면 새로 만들지 않고 기존 기록을 돌려줌
+  // 거리는 Float 컬럼이라 정확히 일치하는지 대신 ±0.005km 범위로 비교
+  const existing = await prisma.activity.findFirst({
+    where: {
+      userId:    session.user.id,
+      deletedAt: null,
+      date,
+      duration:  durSec,
+      distance:  { gte: distKm - 0.005, lte: distKm + 0.005 },
+    },
+  })
+  if (existing) {
+    return NextResponse.json({
+      data: withFormatted(existing),
+      duplicate: true,
+      message: '이미 등록된 기록입니다',
+    })
+  }
+
   const r = await prisma.activity.create({
     data: {
       userId:      session.user.id,
@@ -127,8 +151,10 @@ export async function POST(req: NextRequest) {
       pace:        calcPace(distKm, durSec),
       paceSeconds: distKm > 0 ? Math.round(durSec / distKm) : 0,  // 최고기록 정렬용 숫자 페이스
       heartRate:   avgHR,
+      maxHeartRate: maxHR || lapMaxHR,           // Trackpoint에 심박이 없으면 Lap 요약값 사용
       calories:    totalCal,
       routeType,
+      runType,
       weather,
       notes,
       routeData:   JSON.stringify(sampled),   // 샘플링된 GPS 좌표 JSON 직렬화

@@ -12,7 +12,7 @@ import {
 } from "chart.js";
 import dynamic from "next/dynamic";
 import { api } from "@/src/lib/api";
-import { Activity } from "@/src/types";
+import { Activity, Participation, Shoe, TrainingPlan } from "@/src/types";
 import {
   formatDuration,
   calcPace,
@@ -20,8 +20,16 @@ import {
   toDateStr,
   weatherEmoji,
   routeLabels,
+  runTypeLabels,
+  addDays,
 } from "@/src/lib/utils";
 import { useUI } from "@/src/context/UIContext";
+import ActivityCalendar from "@/src/components/ActivityCalendar";
+import RunTypePicker from "@/src/components/RunTypePicker";
+import TcxImportModal, { TcxResult } from "@/src/components/TcxImportModal";
+import WeekPlanCard from "@/src/components/WeekPlanCard";
+import PlanEditModal from "@/src/components/PlanEditModal";
+import ShoesCard from "@/src/components/ShoesCard";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
@@ -46,6 +54,9 @@ function parseRouteData(routeData?: string): [number, number][] | null {
   } catch {}
   return null;
 }
+
+type View = "list" | "calendar";
+const VIEW_KEY = "activity-view";
 
 type Tab = "week" | "month" | "year" | "all";
 type Period = {
@@ -171,26 +182,41 @@ function buildChart(p: Period, records: Activity[]) {
 
 function RecordForm({
   record,
+  defaultDate,
+  shoes,
   onClose,
   onSaved,
 }: {
   record?: Activity;
+  defaultDate?: string;
+  shoes: Shoe[];
   onClose: () => void;
   onSaved: () => void;
 }) {
   const { showSnackbar } = useUI();
   const [form, setForm] = useState({
-    date: record?.date ?? toDateStr(new Date()),
+    date: record?.date ?? defaultDate ?? toDateStr(new Date()),
     distance: record?.distance ?? "",
     h: record ? Math.floor(record.duration / 3600) : 0,
     m: record ? Math.floor((record.duration % 3600) / 60) : 0,
     s: record ? record.duration % 60 : 0,
     heartRate: record?.heartRate ?? "",
+    maxHeartRate: record?.maxHeartRate || "",
     calories: record?.calories ?? "",
     routeType: record?.routeType ?? "road",
+    runType: record?.runType ?? "",
+    shoeId: record?.shoeId ? String(record.shoeId) : "",
     weather: record?.weather ?? "",
     notes: record?.notes ?? "",
   });
+  // 은퇴한 신발은 숨기되, 이 기록에 이미 지정된 신발이면 선택지에 남겨 둠
+  const shoeOptions = shoes.filter(
+    (s) => !s.retired || String(s.id) === form.shoeId,
+  );
+  const livePace = calcPace(
+    Number(form.distance),
+    Number(form.h) * 3600 + Number(form.m) * 60 + Number(form.s),
+  );
   const set =
     (k: string) =>
     (
@@ -210,8 +236,11 @@ function RecordForm({
         distance: Number(form.distance),
         duration,
         heart_rate: Number(form.heartRate) || 0,
+        max_heart_rate: Number(form.maxHeartRate) || 0,
         calories: Number(form.calories) || 0,
         route_type: form.routeType,
+        run_type: form.runType,
+        shoe_id: form.shoeId ? Number(form.shoeId) : null,
         weather: form.weather,
         notes: form.notes,
       };
@@ -274,6 +303,15 @@ function RecordForm({
               </select>
             </div>
           </div>
+          <div>
+            <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+              훈련 종류
+            </label>
+            <RunTypePicker
+              value={form.runType}
+              onChange={(v) => setForm((f) => ({ ...f, runType: v }))}
+            />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
@@ -329,10 +367,16 @@ function RecordForm({
               </div>
             </div>
           </div>
+          {livePace !== "—" && (
+            <p className="!mt-2 px-3 py-2 rounded-lg bg-[var(--surface2)] text-xs text-[var(--text2)]">
+              페이스{" "}
+              <b className="text-sm text-[var(--navy)]">{livePace}</b> /km
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
-                심박수 (bpm)
+                평균 심박 (bpm)
               </label>
               <input
                 type="number"
@@ -341,6 +385,37 @@ function RecordForm({
                 onChange={set("heartRate")}
                 className="input-dark w-full"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                최고 심박 (bpm)
+              </label>
+              <input
+                type="number"
+                placeholder="170"
+                value={form.maxHeartRate}
+                onChange={set("maxHeartRate")}
+                className="input-dark w-full"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
+                신발
+              </label>
+              <select
+                value={form.shoeId}
+                onChange={set("shoeId")}
+                className="input-dark w-full"
+              >
+                <option value="">선택 안 함</option>
+                {shoeOptions.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
             </div>
             <div>
               <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">
@@ -402,11 +477,13 @@ const WEATHER_LABEL: Record<string, string> = {
 
 function ActivityDrawer({
   record,
+  shoeName,
   onClose,
   onEdit,
   onDelete,
 }: {
   record: Activity;
+  shoeName?: string;
   onClose: () => void;
   onEdit: (r: Activity) => void;
   onDelete: (r: Activity) => void;
@@ -428,9 +505,19 @@ function ActivityDrawer({
     { label: "시간", value: record.duration_formatted, unit: "" },
   ];
   const extras = [
-    record.heartRate
-      ? { icon: "fa-heart", label: "심박수", value: `${record.heartRate} bpm` }
-      : null,
+    record.maxHeartRate
+      ? {
+          icon: "fa-heart",
+          label: "심박 (평균/최고)",
+          value: `${record.heartRate || "—"} / ${record.maxHeartRate} bpm`,
+        }
+      : record.heartRate
+        ? {
+            icon: "fa-heart",
+            label: "심박수",
+            value: `${record.heartRate} bpm`,
+          }
+        : null,
     record.calories
       ? { icon: "fa-fire", label: "칼로리", value: `${record.calories} kcal` }
       : null,
@@ -474,7 +561,12 @@ function ActivityDrawer({
               <h2 className="text-base font-extrabold text-[var(--navy)]">
                 러닝 기록
               </h2>
-              <div className="flex items-center gap-1.5 mt-2">
+              <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                {runTypeLabels[record.runType] && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[rgba(0,200,150,0.14)] text-[#00694f]">
+                    {runTypeLabels[record.runType]}
+                  </span>
+                )}
                 <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)]">
                   {routeLabels[record.routeType] || "로드"}
                 </span>
@@ -482,6 +574,12 @@ function ActivityDrawer({
                   <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)]">
                     {weatherEmoji[record.weather] ?? ""}{" "}
                     {WEATHER_LABEL[record.weather]}
+                  </span>
+                )}
+                {shoeName && (
+                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)]">
+                    <i className="fas fa-shoe-prints mr-1 text-[9px]" />
+                    {shoeName}
                   </span>
                 )}
               </div>
@@ -600,21 +698,77 @@ function ActivityDrawer({
 export default function ActivityPage() {
   const qc = useQueryClient();
   const { showSnackbar, showConfirm } = useUI();
+  const [view, setView] = useState<View>("calendar");
   const [tab, setTab] = useState<Tab>("month");
   const [pidx, setPidx] = useState(0);
+  const [cal, setCal] = useState(() => {
+    const now = new Date();
+    return { y: now.getFullYear(), m: now.getMonth() + 1 };
+  });
+  const [selDate, setSelDate] = useState(() => toDateStr(new Date()));
   const [addOpen, setAddOpen] = useState(false);
+  const [addDate, setAddDate] = useState<string | undefined>();
   const [editRec, setEditRec] = useState<Activity | null>(null);
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(
     null,
   );
+  const [tcxProgress, setTcxProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
+  const [tcxResults, setTcxResults] = useState<TcxResult[] | null>(null);
+  const [planEditOpen, setPlanEditOpen] = useState(false);
   const tcxRef = useRef<HTMLInputElement>(null);
   const csvRef = useRef<HTMLInputElement>(null);
+
+  // 마지막으로 본 보기(목록/캘린더)를 기억
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(VIEW_KEY) === "list") setView("list");
+    } catch {}
+  }, []);
+  const changeView = (v: View) => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {}
+  };
 
   const { data } = useQuery<{ data: Activity[] }>({
     queryKey: ["records"],
     queryFn: () => api.get("/records"),
   });
   const allRecords = data?.data ?? [];
+
+  // 캘린더에 참가 대회 날짜를 표시하기 위한 조회
+  const { data: partData } = useQuery<{ data: Participation[] }>({
+    queryKey: ["participations"],
+    queryFn: () => api.get("/participations"),
+    retry: false,
+  });
+  const races = partData?.data ?? [];
+
+  const { data: shoeData } = useQuery<{ data: Shoe[] }>({
+    queryKey: ["shoes"],
+    queryFn: () => api.get("/shoes"),
+  });
+  const shoes = shoeData?.data ?? [];
+
+  const calYm = `${cal.y}-${String(cal.m).padStart(2, "0")}`;
+  const moveMonth = (delta: number) => {
+    const d = new Date(cal.y, cal.m - 1 + delta, 1);
+    const today = new Date();
+    const isThisMonth =
+      d.getFullYear() === today.getFullYear() &&
+      d.getMonth() === today.getMonth();
+    setCal({ y: d.getFullYear(), m: d.getMonth() + 1 });
+    setSelDate(toDateStr(isThisMonth ? today : d));
+  };
+  const goToday = () => {
+    const today = new Date();
+    setCal({ y: today.getFullYear(), m: today.getMonth() + 1 });
+    setSelDate(toDateStr(today));
+  };
 
   const periods = useMemo(
     () => buildPeriods(tab, allRecords),
@@ -625,9 +779,13 @@ export default function ActivityPage() {
   }, [tab]);
 
   const period = periods[pidx] ?? periods[0];
+  // 캘린더 보기에서는 보고 있는 달, 목록 보기에서는 선택한 기간 기준으로 집계
   const filtered = useMemo(
-    () => filterByPeriod(allRecords, period),
-    [allRecords, period],
+    () =>
+      view === "calendar"
+        ? allRecords.filter((r) => r.date.startsWith(calYm))
+        : filterByPeriod(allRecords, period),
+    [allRecords, period, view, calYm],
   );
   const stats = useMemo(() => {
     const dist = filtered.reduce((s, r) => s + r.distance, 0);
@@ -644,9 +802,53 @@ export default function ActivityPage() {
     [period, allRecords],
   );
 
+  // 훈련 계획: 보고 있는 달에 걸친 주(월–일)를 모두 포함하도록 조회.
+  // Claude 에서 바꾼 계획이 바로 보이도록 화면에 돌아올 때마다 새로 불러옴
+  const planFrom = toDateStr(getMonday(new Date(cal.y, cal.m - 1, 1)));
+  const planTo = addDays(toDateStr(getMonday(new Date(cal.y, cal.m, 0))), 6);
+  const plansKey = ["plans", planFrom, planTo];
+  const { data: planData } = useQuery<{ data: TrainingPlan[] }>({
+    queryKey: plansKey,
+    queryFn: () => api.get(`/plans?from=${planFrom}&to=${planTo}`),
+    staleTime: 0,
+    placeholderData: (prev) => prev,
+  });
+  const plans = planData?.data ?? [];
+  const weekStart = toDateStr(getMonday(new Date(selDate + "T00:00:00")));
+  const weekPlans = plans.filter(
+    (p) => p.date >= weekStart && p.date <= addDays(weekStart, 6),
+  );
+  const invalidatePlans = () => qc.invalidateQueries({ queryKey: ["plans"] });
+
+  const togglePlanMut = useMutation({
+    mutationFn: ({ plan, done }: { plan: TrainingPlan; done: boolean }) =>
+      api.put(`/plans/${plan.date}`, { done }),
+    // 체크는 바로 반영하고, 실패하면 되돌림
+    onMutate: async ({ plan, done }) => {
+      await qc.cancelQueries({ queryKey: plansKey });
+      const prev = qc.getQueryData<{ data: TrainingPlan[] }>(plansKey);
+      qc.setQueryData<{ data: TrainingPlan[] }>(plansKey, (old) =>
+        old
+          ? {
+              data: old.data.map((p) =>
+                p.date === plan.date ? { ...p, done } : p,
+              ),
+            }
+          : old,
+      );
+      return { prev };
+    },
+    onError: (e: Error, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(plansKey, ctx.prev);
+      showSnackbar(e.message, "error");
+    },
+    onSettled: invalidatePlans,
+  });
+
   const invalidateRecords = () => {
     qc.invalidateQueries({ queryKey: ["records"] });
     qc.invalidateQueries({ queryKey: ["this-month-km"] });
+    qc.invalidateQueries({ queryKey: ["shoes"] });
   };
 
   const deleteMut = useMutation({
@@ -661,22 +863,61 @@ export default function ActivityPage() {
 
   const reload = invalidateRecords;
 
-  const handleTCX = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const fd = new FormData();
-    fd.append("tcx", file);
-    fd.append("route_type", "road");
-    api
-      .upload("/records/import/tcx", fd)
-      .then(() => {
-        reload();
-        showSnackbar("TCX 기록이 추가되었습니다");
-      })
-      .catch((err: any) =>
-        showSnackbar(err.message || "TCX 업로드 실패", "error"),
-      );
+  const handleTCX = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
     e.target.value = "";
+    if (!files.length) return;
+
+    // 파일마다 따로 요청: 하나가 실패해도 나머지는 계속 올리고, 요청 크기도 작게 유지
+    const results: TcxResult[] = [];
+    setTcxProgress({ done: 0, total: files.length });
+    for (const file of files) {
+      const fd = new FormData();
+      fd.append("tcx", file);
+      fd.append("route_type", "road");
+      try {
+        const res = await api.upload<{ data: Activity; duplicate?: boolean }>(
+          "/records/import/tcx",
+          fd,
+        );
+        results.push({
+          name: file.name,
+          status: res.duplicate ? "duplicate" : "added",
+          record: res.data,
+        });
+      } catch (err: any) {
+        results.push({
+          name: file.name,
+          status: "error",
+          error: err.message || "업로드 실패",
+        });
+      }
+      setTcxProgress({ done: results.length, total: files.length });
+    }
+    setTcxProgress(null);
+
+    const added = results.filter((r) => r.status === "added").length;
+    const dup = results.filter((r) => r.status === "duplicate").length;
+    const failed = results.filter((r) => r.status === "error");
+    if (added > 0) {
+      // 추가된 기록이 있으면 결과 모달에서 훈련 종류를 바로 고름
+      reload();
+      setTcxResults(results);
+    } else if (failed.length > 0) {
+      showSnackbar(
+        files.length === 1
+          ? failed[0].error!
+          : `TCX 실패 ${failed.length}개${dup ? ` · 중복 ${dup}개 건너뜀` : ""}`,
+        "error",
+      );
+    } else {
+      showSnackbar(
+        files.length === 1
+          ? "이미 등록된 기록입니다"
+          : `모두 이미 등록된 기록입니다 (${dup}개 건너뜀)`,
+        "info",
+      );
+    }
   };
 
   const handleCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -710,13 +951,123 @@ export default function ActivityPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-extrabold text-[var(--navy)]">활동</h1>
-        <p className="text-xs text-[var(--text3)] mt-0.5">러닝 기록과 통계</p>
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-extrabold text-[var(--navy)]">활동</h1>
+          <p className="text-xs text-[var(--text3)] mt-0.5">
+            러닝 기록과 통계
+          </p>
+        </div>
+        <div className="flex gap-1.5 items-center">
+          <input
+            ref={csvRef}
+            type="file"
+            accept=".csv"
+            className="hidden"
+            onChange={handleCSV}
+          />
+          <input
+            ref={tcxRef}
+            type="file"
+            accept=".tcx"
+            multiple
+            className="hidden"
+            onChange={handleTCX}
+          />
+          <button
+            onClick={() => csvRef.current?.click()}
+            className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
+          >
+            <i className="fas fa-file-csv text-[var(--text3)]" />
+            <span className="hidden sm:inline">CSV</span>
+          </button>
+          <button
+            onClick={() => tcxRef.current?.click()}
+            disabled={!!tcxProgress}
+            title="TCX 파일 여러 개를 한 번에 선택할 수 있습니다"
+            className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-wait"
+          >
+            {tcxProgress ? (
+              <>
+                <i className="fas fa-spinner fa-spin text-[var(--text3)]" />
+                <span>
+                  {tcxProgress.done}/{tcxProgress.total}
+                </span>
+              </>
+            ) : (
+              <>
+                <i className="fas fa-route text-[var(--text3)]" />
+                <span className="hidden sm:inline">TCX</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => {
+              setAddDate(undefined);
+              setAddOpen(true);
+            }}
+            className="btn-mint px-3 py-1.5 text-xs flex items-center gap-1.5"
+          >
+            <i className="fas fa-plus" />
+            <span className="hidden sm:inline">추가</span>
+          </button>
+        </div>
       </div>
 
-      {/* Tab + Period nav */}
+      {/* View toggle (+ 캘린더 보기의 월 이동) */}
       <div className="flex flex-wrap items-center gap-3 justify-between">
+        <div
+          role="group"
+          aria-label="보기 전환"
+          className="flex gap-0.5 p-[3px] rounded-full bg-white border border-[var(--border)]"
+        >
+          {(["list", "calendar"] as View[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => changeView(v)}
+              aria-pressed={view === v}
+              className={`act-tab flex items-center gap-1.5 ${view === v ? "active" : ""}`}
+            >
+              <i
+                className={`fas ${v === "list" ? "fa-list" : "fa-calendar-alt"} text-[11px]`}
+              />
+              {v === "list" ? "목록" : "캘린더"}
+            </button>
+          ))}
+        </div>
+        {view === "calendar" && (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => moveMonth(-1)}
+              aria-label="이전 달"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] text-[var(--text2)] transition-colors"
+            >
+              <i className="fas fa-chevron-left text-[10px]" />
+            </button>
+            <span className="text-sm font-bold text-[var(--navy)] min-w-[96px] text-center">
+              {cal.y}년 {cal.m}월
+            </span>
+            <button
+              onClick={() => moveMonth(1)}
+              aria-label="다음 달"
+              className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--surface2)] text-[var(--text2)] transition-colors"
+            >
+              <i className="fas fa-chevron-right text-[10px]" />
+            </button>
+            <button
+              onClick={goToday}
+              className="btn-outline px-3 py-1.5 text-xs"
+            >
+              오늘
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Tab + Period nav (목록 보기) */}
+      <div
+        className={`flex-wrap items-center gap-3 justify-between ${view === "list" ? "flex" : "hidden"}`}
+      >
         <div className="flex gap-0.5 p-0.5 rounded-xl bg-[var(--surface2)]">
           {(["week", "month", "year", "all"] as Tab[]).map((t) => (
             <button
@@ -784,10 +1135,46 @@ export default function ActivityPage() {
         ))}
       </div>
 
-      {/* Bar chart */}
+      {/* Calendar (캘린더 보기) */}
+      {view === "calendar" && (
+        <ActivityCalendar
+          year={cal.y}
+          month={cal.m}
+          records={allRecords}
+          races={races}
+          plans={plans}
+          shoes={shoes}
+          selected={selDate}
+          onSelect={setSelDate}
+          onOpenRecord={setSelectedActivity}
+          onAdd={(date) => {
+            setAddDate(date);
+            setAddOpen(true);
+          }}
+          aside={
+            <WeekPlanCard
+              weekStart={weekStart}
+              plans={weekPlans}
+              onToggle={(plan, done) => togglePlanMut.mutate({ plan, done })}
+              onEdit={() => setPlanEditOpen(true)}
+            />
+          }
+          below={
+            <ShoesCard
+              shoes={shoes}
+              onChanged={() => {
+                qc.invalidateQueries({ queryKey: ["shoes"] });
+                qc.invalidateQueries({ queryKey: ["records"] });
+              }}
+            />
+          }
+        />
+      )}
+
+      {/* Bar chart (목록 보기) */}
       <div
         style={{ height: 160 }}
-        className="bg-white rounded-xl px-5 py-4 border border-[var(--border)]"
+        className={`bg-white rounded-xl px-5 py-4 border border-[var(--border)] ${view === "list" ? "" : "hidden"}`}
       >
         <Bar
           data={{
@@ -839,56 +1226,17 @@ export default function ActivityPage() {
         />
       </div>
 
-      {/* Activity list */}
-      <div>
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-sm font-extrabold text-[var(--navy)]">
-              활동 기록
-            </h2>
-            {allRecords.length > 0 && (
-              <span className="text-xs text-[var(--text3)]">
-                {allRecords.length}개
-              </span>
-            )}
-          </div>
-          <div className="flex gap-1.5 items-center">
-            <input
-              ref={csvRef}
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={handleCSV}
-            />
-            <input
-              ref={tcxRef}
-              type="file"
-              accept=".tcx"
-              className="hidden"
-              onChange={handleTCX}
-            />
-            <button
-              onClick={() => csvRef.current?.click()}
-              className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
-            >
-              <i className="fas fa-file-csv text-[var(--text3)]" />
-              <span className="hidden sm:inline">CSV</span>
-            </button>
-            <button
-              onClick={() => tcxRef.current?.click()}
-              className="btn-outline px-2.5 py-1.5 text-xs font-bold flex items-center gap-1.5"
-            >
-              <i className="fas fa-route text-[var(--text3)]" />
-              <span className="hidden sm:inline">TCX</span>
-            </button>
-            <button
-              onClick={() => setAddOpen(true)}
-              className="btn-mint px-3 py-1.5 text-xs flex items-center gap-1.5"
-            >
-              <i className="fas fa-plus" />
-              <span className="hidden sm:inline">추가</span>
-            </button>
-          </div>
+      {/* Activity list (목록 보기) */}
+      <div className={view === "list" ? "" : "hidden"}>
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-sm font-extrabold text-[var(--navy)]">
+            활동 기록
+          </h2>
+          {allRecords.length > 0 && (
+            <span className="text-xs text-[var(--text3)]">
+              {allRecords.length}개
+            </span>
+          )}
         </div>
 
         {allRecords.length === 0 ? (
@@ -965,6 +1313,13 @@ export default function ActivityPage() {
                         {r.heartRate ? `${r.heartRate} bpm` : "—"}
                       </span>
 
+                      {/* Run type tag — fixed */}
+                      {runTypeLabels[r.runType] && (
+                        <span className="shrink-0 mr-1.5 px-2 py-[0.15rem] rounded-full text-[0.6875rem] font-bold bg-[rgba(0,200,150,0.14)] text-[#00694f]">
+                          {runTypeLabels[r.runType]}
+                        </span>
+                      )}
+
                       {/* Route tag — fixed */}
                       <span className="badge-gray shrink-0 mr-3">
                         {routeLabels[r.routeType] || "로드"}
@@ -988,6 +1343,9 @@ export default function ActivityPage() {
       {selectedActivity && (
         <ActivityDrawer
           record={selectedActivity}
+          shoeName={
+            shoes.find((s) => s.id === selectedActivity.shoeId)?.name
+          }
           onClose={() => setSelectedActivity(null)}
           onEdit={(r) => setEditRec(r)}
           onDelete={handleDelete}
@@ -998,11 +1356,33 @@ export default function ActivityPage() {
       {(addOpen || editRec) && (
         <RecordForm
           record={editRec ?? undefined}
+          defaultDate={addDate}
+          shoes={shoes}
           onClose={() => {
             setAddOpen(false);
             setEditRec(null);
           }}
           onSaved={reload}
+        />
+      )}
+
+      {/* TCX 업로드 결과 + 훈련 종류 선택 */}
+      {tcxResults && (
+        <TcxImportModal
+          results={tcxResults}
+          shoes={shoes}
+          onClose={() => setTcxResults(null)}
+          onSaved={reload}
+        />
+      )}
+
+      {/* 주간 훈련 계획 편집 */}
+      {planEditOpen && (
+        <PlanEditModal
+          weekStart={weekStart}
+          plans={weekPlans}
+          onClose={() => setPlanEditOpen(false)}
+          onSaved={invalidatePlans}
         />
       )}
     </div>

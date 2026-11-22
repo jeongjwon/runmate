@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
 import { syncMonthlyKmBadges } from '@/src/lib/syncBadges'
+import { resolveShoeId } from '@/src/lib/shoes'
 
 function calcPace(distKm: number, durSec: number): string {
   if (!distKm || !durSec) return '-'
@@ -62,7 +63,15 @@ export async function PUT(
   if (!r) return NextResponse.json({ error: '기록을 찾을 수 없습니다' }, { status: 404 })
 
   const body = await req.json().catch(() => ({}))
-  const { date, distance, duration, heart_rate, calories, route_type, weather, notes } = body
+  const { date, distance, duration, heart_rate, max_heart_rate, calories, route_type, run_type, shoe_id, weather, notes } = body
+
+  // shoe_id 가 넘어온 경우에만 신발을 바꿈 (빈 값이면 신발 없음으로)
+  let shoeId: number | null | undefined
+  try {
+    shoeId = shoe_id !== undefined ? await resolveShoeId(session.user.id, shoe_id) : undefined
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 400 })
+  }
 
   const durSec = duration ? parseDuration(duration) : r.duration
   const dist   = distance ? Number(distance) : r.distance
@@ -74,8 +83,11 @@ export async function PUT(
       ...(distance   ? { distance: dist }           : {}),
       ...(duration   ? { duration: durSec }         : {}),
       ...(heart_rate !== undefined ? { heartRate: Number(heart_rate) } : {}),
+      ...(max_heart_rate !== undefined ? { maxHeartRate: Number(max_heart_rate) || 0 } : {}),
       ...(calories   !== undefined ? { calories:  Number(calories)   } : {}),
       ...(route_type ? { routeType: route_type }    : {}),
+      ...(run_type   !== undefined ? { runType: String(run_type) }   : {}),
+      ...(shoeId     !== undefined ? { shoeId }                      : {}),
       ...(weather    ? { weather }                  : {}),
       notes: notes ?? r.notes,
       pace: calcPace(dist, durSec),
@@ -83,7 +95,8 @@ export async function PUT(
     },
   })
 
-  syncMonthlyKmBadges(session.user.id).catch(() => {})
+  // 월간 거리 배지는 날짜·거리가 바뀔 때만 다시 계산 (훈련 종류만 바꾸는 요청은 건너뜀)
+  if (date || distance) syncMonthlyKmBadges(session.user.id).catch(() => {})
 
   return NextResponse.json({ data: withFormatted(updated), message: '기록이 수정되었습니다' })
 }

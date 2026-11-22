@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
 import { syncMonthlyKmBadges } from '@/src/lib/syncBadges'
+import { resolveShoeId } from '@/src/lib/shoes'
 
 function calcPace(distKm: number, durSec: number): string {
   if (!distKm || !durSec) return '-'
@@ -58,11 +59,18 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}))
-  const { date, distance, duration, heart_rate, calories, route_type, weather, notes } = body
+  const { date, distance, duration, heart_rate, max_heart_rate, calories, route_type, run_type, shoe_id, weather, notes } = body
 
   const durSec = parseDuration(duration)
   if (!date || !distance || durSec <= 0) {
     return NextResponse.json({ error: '날짜, 거리, 시간은 필수입니다' }, { status: 400 })
+  }
+
+  let shoeId: number | null
+  try {
+    shoeId = await resolveShoeId(session.user.id, shoe_id)
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message }, { status: 400 })
   }
 
   const distNum = Number(distance)
@@ -75,8 +83,11 @@ export async function POST(req: NextRequest) {
       pace:        calcPace(distNum, durSec),
       paceSeconds: distNum > 0 ? Math.round(durSec / distNum) : 0,
       heartRate:   Number(heart_rate) || 0,
+      maxHeartRate: Number(max_heart_rate) || 0,
       calories:    Number(calories)   || 0,
       routeType:   route_type || 'road',
+      runType:     run_type  || '',
+      shoeId,
       weather:     weather   || '',
       notes:       notes     || '',
     },

@@ -79,14 +79,65 @@ idx(user_id, date)
 
 ---
 
-## 현재 스키마 요약 (2026-05-10 기준)
+## Phase 5 — 활동 캘린더용 컬럼 추가
+**날짜**: 2026-11-22  
+**변경**: `activities`에 컬럼 2개 추가 (기존 행은 기본값으로 채워짐)
+
+### 변경 사항
+- `run_type TEXT NOT NULL DEFAULT ''` — 훈련 종류 (`easy` / `long` / `tempo` / `interval` / `race`)
+- `max_heart_rate INT NOT NULL DEFAULT 0` — 최고 심박수 (bpm)
+
+---
+
+## Phase 6 — 신발 · 훈련 계획 · Claude 연동 테이블 추가
+**날짜**: 2026-11-22  
+**변경**: 테이블 3개 추가, `activities`에 컬럼 1개 추가 (기존 데이터 변경 없음)
+
+### 변경 사항
+- 신규 테이블 추가:
+
+**`shoes`**
+```
+id, created_at, updated_at, user_id, name, start_km, retired_at
+idx(user_id)
+FK user_id → users ON DELETE CASCADE
+```
+
+**`training_plans`**
+```
+id, created_at, updated_at, user_id, date, kind, title, detail, done
+unique(user_id, date)
+FK user_id → users ON DELETE CASCADE
+```
+
+**`mcp_grants`**
+```
+id, created_at, user_id, client_name, code_id(unique), refresh_hash(unique), last_used_at
+idx(user_id)
+FK user_id → users ON DELETE CASCADE
+```
+
+- `activities`에 `shoe_id INT NULL` 추가 — FK → `shoes` ON DELETE SET NULL, `idx(shoe_id)`
+
+### 반영 방법
+```bash
+npm run db:push
+```
+새 테이블과 nullable 컬럼만 추가하므로 기존 행은 그대로입니다. 코드를 배포하기 전에 먼저 실행해야 합니다.
+
+---
+
+## 현재 스키마 요약 (2026-11-22 기준)
 
 | 테이블 | 주요 컬럼 | 비고 |
 |--------|-----------|------|
 | `users` | provider, provider_id, name, email, picture | unique(provider, provider_id) |
 | `marathons` | name, date, location, city, categories, is_active | — |
 | `marathon_participations` | user_id, marathon_id, finish_time, category | unique(user_id, marathon_id), soft-delete |
-| `activities` | user_id, date, distance, duration, pace_seconds, route_data | 인덱스 4개 |
+| `activities` | user_id, date, distance, duration, pace_seconds, run_type, max_heart_rate, shoe_id, route_data | 인덱스 5개 |
+| `shoes` | user_id, name, start_km, retired_at | 누적 거리는 `activities` 합계로 계산 |
+| `training_plans` | user_id, date, kind, title, detail, done | unique(user_id, date) — 하루에 계획 하나 |
+| `mcp_grants` | user_id, client_name, code_id, refresh_hash, last_used_at | Claude 연결 1건당 1행, 토큰 원문은 저장하지 않음 |
 | `badge_definitions` | code, type, threshold | 배지 종류 마스터 데이터 |
 | `user_badges` | user_id, badge_id, year, month | unique으로 중복 수여 방지 |
 | `notifications` | user_id, type, ref_id, is_read | unique으로 중복 생성 방지 |

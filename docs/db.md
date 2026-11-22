@@ -12,10 +12,16 @@ users
   ├── marathon_participations (1:N)
   ├── activities              (1:N)
   ├── user_badges             (1:N)
-  └── notifications           (1:N)
+  ├── notifications           (1:N)
+  ├── shoes                   (1:N)
+  ├── training_plans          (1:N)
+  └── mcp_grants              (1:N)
 
 marathons
   └── marathon_participations (1:N)
+
+shoes
+  └── activities              (1:N, activities.shoe_id — 신발을 지우면 NULL)
 
 badge_definitions
   └── user_badges             (1:N)
@@ -104,11 +110,14 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 | `pace` | `text` | 평균 페이스 문자열 (예: `6'01"`) |
 | `pace_seconds` | `int` | 페이스 (초/km) — 인덱스 기반 최고기록 조회용 |
 | `heart_rate` | `int` | 평균 심박수 (bpm) |
+| `max_heart_rate` | `int` | 최고 심박수 (bpm), 없으면 0 |
 | `calories` | `int` | 소모 칼로리 (kcal) |
 | `route_type` | `text` | 코스 유형 (`road` / `trail` / `track` / `treadmill`) |
+| `run_type` | `text` | 훈련 종류 (`easy` / `long` / `tempo` / `interval` / `race`), 미지정이면 빈 문자열 |
 | `weather` | `text` | 날씨 (`sunny` / `cloudy` / `rainy` / `snowy` / `windy`) |
 | `notes` | `text` | 메모 |
 | `marathon_id` | `int?` | 연관 마라톤 ID |
+| `shoe_id` | `int?` FK → shoes | 신은 신발. 신발을 삭제하면 NULL (`ON DELETE SET NULL`) |
 | `route_data` | `text` | GPS 경로 JSON (`[[lat, lng], ...]`) |
 
 **인덱스**:
@@ -116,6 +125,66 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 - `(user_id, duration)` — 최장 시간 최고기록 조회
 - `(user_id, pace_seconds)` — 최고 페이스 최고기록 조회
 - `(user_id, date)` — 날짜 범위 및 히트맵 조회
+- `(shoe_id)` — 신발별 누적 거리 집계
+
+---
+
+### `shoes`
+
+러닝화 목록입니다. 누적 거리는 컬럼으로 저장하지 않고, `start_km`에 해당 신발로 달린 `activities.distance` 합계를 더해 조회 시점에 계산합니다 (`src/lib/shoes.ts`의 `listShoes`).
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | `int` PK | 자동 증가 |
+| `created_at` | `timestamptz` | 생성 시각 |
+| `updated_at` | `timestamptz` | 수정 시각 |
+| `user_id` | `int` FK → users | 소유자 (`ON DELETE CASCADE`) |
+| `name` | `text` | 신발 이름 (최대 40자) |
+| `start_km` | `float` | RunMate에 등록하기 전에 이미 달린 거리 (km, 기본값 0) |
+| `retired_at` | `timestamptz?` | 은퇴 시각. 값이 있으면 기록 폼의 신발 선택에서 숨김 |
+
+**인덱스**: `(user_id)` — 사용자별 신발 목록 조회  
+교체 기준 거리는 `src/lib/utils.ts`의 `SHOE_LIMIT_KM`(600km)이며, 80% 이상이면 화면에 "교체 임박"으로 표시합니다.
+
+---
+
+### `training_plans`
+
+날짜별 훈련 계획입니다. 하루에 계획은 하나이며, 같은 날짜에 다시 저장하면 덮어씁니다.  
+활동 페이지의 계획 편집과 Claude 커넥터(`save_plans` 도구)가 같은 테이블을 씁니다.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | `int` PK | 자동 증가 |
+| `created_at` | `timestamptz` | 생성 시각 |
+| `updated_at` | `timestamptz` | 수정 시각 |
+| `user_id` | `int` FK → users | 소유자 (`ON DELETE CASCADE`) |
+| `date` | `text` | 계획 날짜 (YYYY-MM-DD) |
+| `kind` | `text` | 종류 (`run` / `strength` / `both` / `rest`) |
+| `title` | `text` | 제목 (최대 100자, 예: `이지런 8km`) |
+| `detail` | `text` | 상세 내용 (최대 500자) |
+| `done` | `bool` | 완료 여부 (기본값 false) |
+
+**유니크 제약**: `(user_id, date)` — 하루에 계획 하나
+
+---
+
+### `mcp_grants`
+
+Claude 커넥터(MCP) 연결 이력입니다. 사용자가 동의 화면에서 "허용"을 누를 때마다 1행이 생기고, 연결을 해제하면 행을 삭제합니다.  
+토큰 원문은 저장하지 않습니다. 자세한 흐름은 [auth.md](auth.md#claude-커넥터-oauth-mcp) 참고.
+
+| 컬럼 | 타입 | 설명 |
+|------|------|------|
+| `id` | `int` PK | 자동 증가. 액세스 토큰 안에 들어가는 연결 식별자 |
+| `created_at` | `timestamptz` | 연결 시각 |
+| `user_id` | `int` FK → users | 연결한 사용자 (`ON DELETE CASCADE`) |
+| `client_name` | `text` | 연결한 클라이언트 이름 (예: `Claude`) |
+| `code_id` | `text` UNIQUE | 인가 코드 식별자 — 같은 코드를 두 번 교환하지 못하게 함 |
+| `refresh_hash` | `text` UNIQUE | 리프레시 토큰의 SHA-256 해시 |
+| `last_used_at` | `timestamptz?` | 마지막 사용 시각 (10분에 한 번만 갱신) |
+
+**인덱스**: `(user_id)` — 사용자별 연결 목록 조회
 
 ---
 
@@ -216,3 +285,11 @@ DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].poole
 ```
 
 `pgbouncer=true`와 `connection_limit=1`은 Prisma + PgBouncer 조합에서 필수 옵션입니다.
+
+`prisma db push`는 `DIRECT_URL`로 접속합니다. 같은 풀러 주소의 Session mode(port 5432)를 사용합니다.
+
+```
+DIRECT_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+```
+
+Supabase의 직접 연결 주소(`db.[project-ref].supabase.co`)는 IPv6 전용이라, IPv6가 안 되는 네트워크에서는 `P1001: Can't reach database server`가 납니다.
