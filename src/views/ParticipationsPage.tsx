@@ -17,15 +17,18 @@ const CATS = ["5K", "10K", "Half", "Full", "기타"];
 type EditForm = {
   category: string;
   finishTime: string;
+  goalTime: string;
   raceNotes: string;
   certificateUrl: string;
 };
 
 function dday(dateStr: string) {
-  const race = new Date(dateStr.replace(/\./g, "-"));
+  // new Date("YYYY-MM-DD") 는 UTC 자정이라 한국 시간에서는 하루 밀림 → 로컬 자정으로 만든다
+  const [y, m, d] = dateStr.split(/[.-]/).map(Number);
+  const race = new Date(y, m - 1, d);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const diff = Math.ceil((race.getTime() - today.getTime()) / 86400000);
+  const diff = Math.round((race.getTime() - today.getTime()) / 86400000);
   if (diff === 0) return "D-DAY";
   if (diff > 0) return `D-${diff}`;
   return `D+${Math.abs(diff)}`;
@@ -60,7 +63,7 @@ export default function ParticipationsPage() {
   const { showSnackbar, showConfirm } = useUI();
   const [editTarget, setEditTarget] = useState<Participation | null>(null);
   const [form, setForm] = useState<EditForm>({
-    category: "", finishTime: "", raceNotes: "", certificateUrl: "",
+    category: "", finishTime: "", goalTime: "", raceNotes: "", certificateUrl: "",
   });
   const [uploading, setUploading] = useState(false);
 
@@ -71,7 +74,7 @@ export default function ParticipationsPage() {
   const participations = data?.data ?? [];
 
   const delMut = useMutation({
-    mutationFn: (id: number) => api.delete(`/participations/${id}`),
+    mutationFn: (marathonId: number) => api.delete(`/participations/${marathonId}`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["participations"] });
       qc.invalidateQueries({ queryKey: ["marathons"] });
@@ -95,6 +98,7 @@ export default function ParticipationsPage() {
     setForm({
       category: p.category ?? "",
       finishTime: p.finishTime ?? "",
+      goalTime: p.goalTime ?? "",
       raceNotes: p.raceNotes ?? "",
       certificateUrl: p.certificateUrl ?? "",
     });
@@ -125,16 +129,23 @@ export default function ParticipationsPage() {
   const submitEdit = () => {
     if (!editTarget) return;
     if (!form.category) { showSnackbar("종목을 선택해주세요", "error"); return; }
-    if (!form.finishTime) { showSnackbar("완주 시간을 입력해주세요", "error"); return; }
-    if (!FINISH_TIME_REGEX.test(form.finishTime)) {
+    // 완주 시간은 대회를 뛴 뒤에 채우면 되므로 비워 둘 수 있음 (대회 전에는 목표 기록만 저장)
+    const finishTime = form.finishTime.trim();
+    const goalTime = form.goalTime.trim();
+    if (finishTime && !FINISH_TIME_REGEX.test(finishTime)) {
       showSnackbar("완주시간 형식: H:MM:SS (예: 4:32:10)", "error");
+      return;
+    }
+    if (goalTime && !FINISH_TIME_REGEX.test(goalTime)) {
+      showSnackbar("목표 기록 형식: H:MM:SS (예: 3:59:59)", "error");
       return;
     }
     updateMut.mutate({
       marathonId: editTarget.marathonId,
       body: {
         category: form.category,
-        finish_time: form.finishTime,
+        finish_time: finishTime,
+        goal_time: goalTime,
         race_notes: form.raceNotes,
         certificate_url: form.certificateUrl,
       },
@@ -343,6 +354,15 @@ export default function ParticipationsPage() {
                           {p.category}
                         </span>
                       )}
+                      {p.goalTime && (
+                        <span
+                          className="inline-flex items-center text-[10px] font-semibold px-2.5 py-1 rounded-lg"
+                          style={{ background: "#f1f3f5", color: "#5a6e7e" }}
+                        >
+                          <i className="fas fa-bullseye mr-1.5 text-[8px]" />
+                          목표 {p.goalTime}
+                        </span>
+                      )}
                       {pace && (
                         <span
                           className="inline-flex items-center text-[10px] font-bold px-2.5 py-1 rounded-lg"
@@ -387,7 +407,7 @@ export default function ParticipationsPage() {
                           showConfirm(
                             "대회 제거",
                             `${p.marathon.name}을(를) 제거하시겠습니까?`,
-                            () => delMut.mutate(p.id),
+                            () => delMut.mutate(p.marathonId),
                           )
                         }
                         className="px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-colors whitespace-nowrap"
@@ -414,7 +434,7 @@ export default function ParticipationsPage() {
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden"
+            className="bg-white rounded-2xl w-full max-w-sm shadow-2xl max-h-[92vh] overflow-y-auto"
           >
             <div className="px-5 pt-5 pb-4 border-b border-[var(--border)]">
               <h3 className="font-bold text-[var(--navy)]">기록 편집</h3>
@@ -426,7 +446,8 @@ export default function ParticipationsPage() {
                   종목 <span className="text-red-400">*</span>
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {CATS.map((c) => (
+                  {/* 직접 추가한 대회의 "50K" 같은 종목도 선택지에 보이게 */}
+                  {(form.category && !CATS.includes(form.category) ? [...CATS, form.category] : CATS).map((c) => (
                     <button
                       key={c}
                       onClick={() => setForm((f) => ({ ...f, category: c }))}
@@ -442,12 +463,19 @@ export default function ParticipationsPage() {
                 </div>
               </div>
               <div>
-                <label className="flex items-center gap-1 text-xs font-bold mb-1.5 text-[var(--text2)]">
-                  완주 시간 <span className="text-red-400">*</span>
-                </label>
+                <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">목표 기록</label>
                 <input
                   className="input-dark w-full"
-                  placeholder="H:MM:SS (예: 4:32:10)"
+                  placeholder="H:MM:SS (예: 3:59:59)"
+                  value={form.goalTime}
+                  onChange={(e) => setForm((f) => ({ ...f, goalTime: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">완주 시간</label>
+                <input
+                  className="input-dark w-full"
+                  placeholder="H:MM:SS (예: 4:32:10) · 대회 후에 입력"
                   value={form.finishTime}
                   onChange={(e) => setForm((f) => ({ ...f, finishTime: e.target.value }))}
                 />

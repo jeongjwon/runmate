@@ -85,6 +85,7 @@ erDiagram
         string  city
         string  categories      "쉼표 구분 (5K,10K,Half,Full)"
         boolean is_active
+        int     created_by      FK "직접 추가한 사용자, 크롤링한 대회는 NULL"
     }
 
     marathon_participations {
@@ -93,6 +94,7 @@ erDiagram
         int      marathon_id  FK
         string   category
         int      finish_time  "완주 시간(초), nullable"
+        int      goal_time    "목표 기록(초), nullable"
         string   race_notes
         string   certificate_url
         datetime deleted_at   "soft delete (참가 취소)"
@@ -103,7 +105,9 @@ erDiagram
         int    user_id      FK
         string date
         float  distance     "km"
-        int    duration     "초"
+        int    duration     "이동 시간(초), 정지 제외"
+        int    elapsed      "총 경과 시간(초), nullable"
+        string external_id  "워치 활동 ID, nullable"
         string pace         "표시용 문자열 (5'30)"
         int    pace_seconds "정렬·비교용 숫자"
         int    heart_rate
@@ -119,6 +123,9 @@ erDiagram
         int      id         PK
         int      user_id    FK
         string   name
+        string   brand
+        string   model
+        string   purpose    "용도 메모"
         float    start_km   "등록 전에 이미 달린 거리"
         datetime retired_at "은퇴 시각, nullable"
     }
@@ -174,6 +181,7 @@ erDiagram
 
     users                   ||--o{ marathon_participations : "참가 신청"
     marathons               ||--o{ marathon_participations : "대상 대회"
+    users                   |o--o{ marathons               : "직접 추가한 대회"
     users                   ||--o{ activities              : "러닝 기록"
     users                   ||--o{ user_badges             : "배지 획득"
     badge_definitions       ||--o{ user_badges             : "배지 정의"
@@ -192,6 +200,7 @@ erDiagram
 |--------|------------|------|
 | `users` | `(provider, provider_id)` | 동일 소셜 계정 중복 가입 방지 |
 | `marathon_participations` | `(user_id, marathon_id)` | 동일 대회 중복 신청 방지 |
+| `activities` | `(user_id, external_id)` | 같은 워치 활동 중복 저장 방지 (NULL은 여러 개 허용) |
 | `user_badges` | `(user_id, badge_id, year, month)` | 동일 조건 배지 중복 수여 방지 |
 | `notifications` | `(user_id, type, ref_id)` | D-Day·배지 알림 중복 생성 방지 |
 | `training_plans` | `(user_id, date)` | 하루에 계획 하나 (같은 날짜는 덮어쓰기) |
@@ -206,6 +215,7 @@ erDiagram
 | `activities` | `(user_id, date)` | 날짜 범위·히트맵 조회 |
 | `activities` | `(shoe_id)` | 신발별 누적 거리 집계 |
 | `shoes` | `(user_id)` | 사용자별 신발 목록 조회 |
+| `marathons` | `(created_by)` | 내가 직접 추가한 대회 조회 |
 | `mcp_grants` | `(user_id)` | 사용자별 Claude 연결 목록 조회 |
 | `user_badges` | `(user_id)` | 사용자별 배지 목록 조회 |
 | `notifications` | `(user_id, is_read)` | 미읽음 알림 카운트 조회 |

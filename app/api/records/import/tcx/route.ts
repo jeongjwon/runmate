@@ -3,6 +3,8 @@ import { getServerSession } from 'next-auth/next'
 import { XMLParser } from 'fast-xml-parser'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
+import { cleanExternalId, findDuplicateRun } from '@/src/lib/runs'
+import { kstToday } from '@/src/lib/plans'
 
 // 초(sec) → "분'초"" 형식의 페이스 문자열 반환 (예: 5'30")
 function calcPace(distKm: number, durSec: number): string {
@@ -29,7 +31,7 @@ function withFormatted(r: any) {
 // POST /api/records/import/tcx
 // multipart/form-data 로 TCX 파일을 받아 파싱 후 activity로 저장
 // 요청 1번에 파일 1개. 여러 파일은 클라이언트가 파일마다 따로 요청함
-// 이미 같은 기록이 있으면 저장하지 않고 200 + { duplicate: true } 로 응답
+// 이미 같은 기록이 있으면 새로 만들지 않고 200 + { duplicate: true } 로 응답 (빠진 정보만 채움)
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) {
@@ -81,6 +83,7 @@ export async function POST(req: NextRequest) {
   let totalTimeSec = 0, totalDistM = 0, totalCal = 0, hrSum = 0, hrCount = 0
   let maxHR = 0, lapMaxHR = 0             // 최고 심박: Trackpoint 기준 / Lap 요약값 기준
   const allPts: [number, number][] = []   // 전체 GPS 좌표 [lat, lng]
+  let firstMs = NaN, lastMs = NaN         // 첫·마지막 Trackpoint 시각 (총 경과 시간 계산용)
 
   // 모든 Lap을 순회하며 시간·거리·칼로리·심박·GPS 좌표를 누적
   for (const lap of laps) {
@@ -94,6 +97,9 @@ export async function POST(req: NextRequest) {
     const trackpoints = lap.Track?.Trackpoint
     const tps = Array.isArray(trackpoints) ? trackpoints : [trackpoints].filter(Boolean)
     for (const tp of tps) {
+      const ms = Date.parse(tp?.Time)
+      if (!isNaN(ms)) { if (isNaN(firstMs)) firstMs = ms; lastMs = ms }
+
       const hr = Number(tp?.HeartRateBpm?.Value) || 0
       if (hr > 0) { hrSum += hr; hrCount++; if (hr > maxHR) maxHR = hr }
 
@@ -109,8 +115,8 @@ export async function POST(req: NextRequest) {
   const sampled = allPts.filter((_, i) => i % step === 0)
 
   // 활동 시작 날짜: TCX의 Activity.Id(ISO 8601 UTC)를 KST(+9h)로 변환
-  // 파싱 실패 시 오늘 날짜로 폴백
-  let date = new Date().toISOString().split('T')[0]
+  // 파싱 실패 시 오늘 날짜(한국 시간)로 폴백
+  let date = kstToday()
   if (activity.Id) {
     try {
       const kst = new Date(new Date(activity.Id).getTime() + 9 * 3600 * 1000)
@@ -123,22 +129,36 @@ export async function POST(req: NextRequest) {
   const durSec = Math.round(totalTimeSec)
   const avgHR  = hrCount > 0 ? Math.round(hrSum / hrCount) : 0
 
-  // 중복 방지: 같은 날짜·거리·시간의 기록이 이미 있으면 새로 만들지 않고 기존 기록을 돌려줌
-  // 거리는 Float 컬럼이라 정확히 일치하는지 대신 ±0.005km 범위로 비교
-  const existing = await prisma.activity.findFirst({
-    where: {
-      userId:    session.user.id,
-      deletedAt: null,
-      date,
-      duration:  durSec,
-      distance:  { gte: distKm - 0.005, lte: distKm + 0.005 },
-    },
-  })
-  if (existing) {
+  // duration 은 Lap 의 TotalTimeSeconds 합 = 워치 타이머 시간(일시정지 제외, 이동 시간)
+  // elapsed 는 활동 시작부터 마지막 Trackpoint 까지 = 총 경과 시간. 구할 수 없으면 null
+  const startMs = Date.parse(String(activity.Id ?? ''))
+  const spanSec = Math.round((lastMs - (isNaN(startMs) ? firstMs : Math.min(startMs, firstMs))) / 1000)
+  const elapsed = spanSec >= durSec ? spanSec : null
+
+  // 워치가 붙인 활동 고유 ID. 같은 파일을 다시 올려도 이 값으로 알아봄
+  const externalId = cleanExternalId(activity.Id) || null
+  const routeData  = JSON.stringify(sampled)   // 샘플링된 GPS 좌표 JSON 직렬화
+
+  // 중복 방지: external_id 가 같거나, 같은 날짜에 거리가 100m 이내인 기록이 있으면 새로 만들지 않음
+  // 기존 기록에 비어 있는 정보(external_id, 총 경과 시간, 심박, 칼로리, 경로)는 이 파일의 값으로 채움
+  const dup = await findDuplicateRun(session.user.id, { date, distance: distKm, externalId })
+  if (dup) {
+    const cur = dup.run
+    const fill = {
+      ...(!cur.externalId && externalId ? { externalId } : {}),
+      ...(cur.elapsed == null && elapsed != null && elapsed >= cur.duration ? { elapsed } : {}),
+      ...(!cur.heartRate && avgHR ? { heartRate: avgHR } : {}),
+      ...(!cur.maxHeartRate && (maxHR || lapMaxHR) ? { maxHeartRate: maxHR || lapMaxHR } : {}),
+      ...(!cur.calories && totalCal ? { calories: totalCal } : {}),
+      ...((!cur.routeData || cur.routeData === '[]') && sampled.length ? { routeData } : {}),
+    }
+    const filled = Object.keys(fill)
+    const saved  = filled.length ? await prisma.activity.update({ where: { id: cur.id }, data: fill }) : cur
     return NextResponse.json({
-      data: withFormatted(existing),
+      data: withFormatted(saved),
       duplicate: true,
-      message: '이미 등록된 기록입니다',
+      filled,
+      message: filled.length ? '이미 등록된 기록에 빠진 정보를 채웠습니다' : '이미 등록된 기록입니다',
     })
   }
 
@@ -148,6 +168,8 @@ export async function POST(req: NextRequest) {
       date,
       distance:    distKm,
       duration:    durSec,
+      elapsed,
+      externalId,
       pace:        calcPace(distKm, durSec),
       paceSeconds: distKm > 0 ? Math.round(durSec / distKm) : 0,  // 최고기록 정렬용 숫자 페이스
       heartRate:   avgHR,
@@ -157,7 +179,7 @@ export async function POST(req: NextRequest) {
       runType,
       weather,
       notes,
-      routeData:   JSON.stringify(sampled),   // 샘플링된 GPS 좌표 JSON 직렬화
+      routeData,
     },
   })
 

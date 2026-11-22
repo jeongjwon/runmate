@@ -81,8 +81,12 @@ runmate/
 │   │   ├── prisma.ts           # Prisma 싱글턴
 │   │   ├── supabase.ts         # Supabase 클라이언트
 │   │   ├── syncBadges.ts       # 월간 km 배지 sync 공유 로직
+│   │   ├── useMe.ts            # 로그인 사용자 조회 훅 ({ user, loading })
 │   │   ├── plans.ts            # 훈련 계획 검증 · 저장 (REST · MCP 공용)
 │   │   ├── shoes.ts            # 신발 목록 + 누적 거리 계산, shoe_id 검증
+│   │   ├── races.ts            # 대회 직접 추가 · 검증, 보이는 대회 범위 (REST · MCP 공용)
+│   │   ├── runs.ts             # 러닝 기록 중복 판정 (MCP · TCX 임포트 공용)
+│   │   ├── stats.ts            # 통계 페이지 계산 (기간별 합계 · 주간 거리 · 종목별 최고 기록)
 │   │   ├── mcpAuth.ts          # MCP용 OAuth (클라이언트 등록 · 코드 · 토큰 서명/검증)
 │   │   ├── mcpTools.ts         # MCP 도구 정의 · 실행
 │   │   └── utils.ts            # 공통 유틸 (formatDuration, calcPace 등)
@@ -141,7 +145,7 @@ runmate/
 - **D-7 / D-1 알림**: 참가 신청한 마라톤의 대회일 7일·1일 전에 자동 생성
 - **배지 알림**: `syncMonthlyKmBadges` 에서 신규 배지 획득 시 생성
 - 알림은 `(userId, type, refId)` 유니크 제약으로 중복 생성 방지
-- `TopBar`에서 5분마다 폴링하며, 패널을 열면 전체 읽음 처리 (`PATCH /api/notifications`)
+- `TopBar`에서 5분마다 폴링하며, 패널을 열면 전체 읽음 처리 (`PATCH /api/notifications`, 화면에는 응답을 기다리지 않고 즉시 반영)
 
 ## 데이터 크롤링
 

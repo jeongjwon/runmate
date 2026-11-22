@@ -38,7 +38,7 @@ runmate/
 │   ├── oauth/authorize/      # Claude 커넥터 연결 동의 화면
 │   └── api/                  # Route Handlers
 │       ├── auth/[...nextauth]/
-│       ├── marathons/        # 목록, sync(크롤링)
+│       ├── marathons/        # 목록, 직접 추가, sync(크롤링)
 │       ├── participations/
 │       ├── records/          # 러닝 기록 CRUD + TCX import
 │       ├── stats/
@@ -93,10 +93,12 @@ npm run dev
 | 메서드 | URL | 설명 |
 |--------|-----|------|
 | GET | `/api/marathons` | 목록 (`?city=&category=`) |
+| POST | `/api/marathons` | 대회 직접 추가 (본인에게만 보임, 내 마라톤에 바로 추가) |
+| PUT/DELETE | `/api/marathons/:id` | 직접 추가한 대회 수정/삭제 |
 | POST | `/api/marathons/sync` | roadrun.co.kr 크롤링 |
 | GET | `/api/participations` | 내 마라톤 (인증 필요) |
 | POST/DELETE | `/api/participations/:marathon_id` | 추가/제거 |
-| PUT | `/api/participations/:marathon_id/record` | 완주 기록 |
+| PUT | `/api/participations/:marathon_id/record` | 완주 기록 · 목표 기록 |
 | GET/POST | `/api/records` | 러닝 기록 |
 | PUT/DELETE | `/api/records/:id` | 수정/삭제 |
 | POST | `/api/records/import/tcx` | TCX 임포트 |

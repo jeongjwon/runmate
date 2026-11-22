@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
+import { kstToday, mondayOf, shiftDate } from '@/src/lib/plans'
 
 function calcPace(dist: number, sec: number): string {
   if (!dist || !sec) return '-'
@@ -16,17 +17,8 @@ function formatDuration(sec: number): string {
     : `${m}:${String(s).padStart(2, '0')}`
 }
 
-function getMonday(date: Date): Date {
-  const d = new Date(date)
-  const day = d.getDay()
-  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day))
-  d.setHours(0, 0, 0, 0)
-  return d
-}
-
-function toDateStr(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
+// "YYYY-MM-DD" → "M/D"
+const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
 
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions)
@@ -43,17 +35,16 @@ export async function GET(req: NextRequest) {
   })
 
   if (period === 'weekly') {
-    const now = new Date()
+    // 서버는 UTC 라 한국 날짜 기준으로 주(월~일)를 나눔
+    const thisMonday = mondayOf(kstToday())
     const result = []
     for (let i = 7; i >= 0; i--) {
-      const monday = getMonday(new Date(now.getTime() - i * 7 * 86400000))
-      const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6)
-      const from = toDateStr(monday), to = toDateStr(sunday)
+      const from = shiftDate(thisMonday, -7 * i), to = shiftDate(from, 6)
       const week = records.filter(r => r.date >= from && r.date <= to)
       const dist = week.reduce((s, r) => s + r.distance, 0)
       const sec  = week.reduce((s, r) => s + r.duration, 0)
       result.push({
-        week: `${monday.getMonth()+1}/${monday.getDate()} – ${sunday.getMonth()+1}/${sunday.getDate()}`,
+        week: `${md(from)} – ${md(to)}`,
         total_distance: dist,
         total_duration: sec,
         total_duration_formatted: formatDuration(sec),
@@ -65,7 +56,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (period === 'monthly') {
-    const y = Number(year) || new Date().getFullYear()
+    const y = Number(year) || Number(kstToday().slice(0, 4))
     const result = Array.from({ length: 12 }, (_, mo) => {
       const ym    = `${y}-${String(mo + 1).padStart(2, '0')}`
       const month = records.filter(r => r.date.startsWith(ym))

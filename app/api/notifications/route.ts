@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
+import { kstToday } from '@/src/lib/plans'
 
 function parseDateString(s: string): Date | null {
   const iso = s.match(/(\d{4})-(\d{2})-(\d{2})/)
@@ -19,8 +20,8 @@ async function generateDdayNotifications(userId: number) {
     include: { marathon: { select: { id: true, name: true, date: true } } },
   })
 
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // 서버는 UTC 라 한국 날짜로 오늘을 구함 (대회 날짜와 같은 방식으로 Date 를 만들어 일수 차이만 계산)
+  const today = parseDateString(kstToday())!
 
   for (const p of participations) {
     const raceDate = parseDateString(p.marathon.date)

@@ -4,6 +4,7 @@ import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
 import { syncMonthlyKmBadges } from '@/src/lib/syncBadges'
 import { resolveShoeId } from '@/src/lib/shoes'
+import { deletedRun } from '@/src/lib/runs'
 
 function calcPace(distKm: number, durSec: number): string {
   if (!distKm || !durSec) return '-'
@@ -82,6 +83,8 @@ export async function PUT(
       ...(date       ? { date }                     : {}),
       ...(distance   ? { distance: dist }           : {}),
       ...(duration   ? { duration: durSec }         : {}),
+      // 이동 시간이 총 경과 시간보다 길어졌으면 총 경과 시간은 알 수 없는 값으로 둠
+      ...(r.elapsed != null && r.elapsed < durSec ? { elapsed: null } : {}),
       ...(heart_rate !== undefined ? { heartRate: Number(heart_rate) } : {}),
       ...(max_heart_rate !== undefined ? { maxHeartRate: Number(max_heart_rate) || 0 } : {}),
       ...(calories   !== undefined ? { calories:  Number(calories)   } : {}),
@@ -115,7 +118,7 @@ export async function DELETE(
   })
   if (!r) return NextResponse.json({ error: '기록을 찾을 수 없습니다' }, { status: 404 })
 
-  await prisma.activity.update({ where: { id: r.id }, data: { deletedAt: new Date() } })
+  await prisma.activity.update({ where: { id: r.id }, data: deletedRun() })
 
   syncMonthlyKmBadges(session.user.id).catch(() => {})
 

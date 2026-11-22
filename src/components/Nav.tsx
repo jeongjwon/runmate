@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
-import { api } from "@/src/lib/api";
-import { User } from "@/src/types";
+import { useMe } from "@/src/lib/useMe";
 import { useUI } from "@/src/context/UIContext";
 
 const SIDEBAR_BG = "#0F2A3D";
@@ -14,12 +12,7 @@ export default function Nav() {
   const pathname = usePathname();
   const { openLogin } = useUI();
 
-  const { data } = useQuery<{ user: User | null }>({
-    queryKey: ["me"],
-    queryFn: () => api.get("/me"),
-    staleTime: Infinity,
-  });
-  const user = data?.user;
+  const { user, loading } = useMe();
 
   const navLinks = [
     { to: "/", icon: "fa-home", label: "홈" },
@@ -101,6 +94,20 @@ export default function Nav() {
               </Link>
             );
           })}
+          {/* 로그인 확인 중에는 메뉴 자리만 잡아 둠 */}
+          {loading &&
+            [0, 1, 2].map((i) => (
+              <div key={i} className="flex items-center gap-3 px-3 py-2.5">
+                <div
+                  className="w-4 h-4 rounded animate-pulse"
+                  style={{ background: "rgba(255,255,255,0.08)" }}
+                />
+                <div
+                  className="h-3 w-14 rounded animate-pulse"
+                  style={{ background: "rgba(255,255,255,0.08)" }}
+                />
+              </div>
+            ))}
         </nav>
 
         {/* 사용자 영역 */}
@@ -108,7 +115,18 @@ export default function Nav() {
           className="px-3 pb-5 pt-3"
           style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}
         >
-          {user ? (
+          {loading ? (
+            <div className="flex items-center gap-2.5 px-2 py-2">
+              <div
+                className="w-8 h-8 rounded-full shrink-0 animate-pulse"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+              />
+              <div
+                className="h-3 w-20 rounded animate-pulse"
+                style={{ background: "rgba(255,255,255,0.08)" }}
+              />
+            </div>
+          ) : user ? (
             <div
               className="flex items-center gap-2.5 px-2 py-2 rounded-xl group"
               style={{ cursor: "default" }}
@@ -189,7 +207,17 @@ export default function Nav() {
               </Link>
             );
           })}
-          {!user && (
+          {loading &&
+            [0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="flex-1 flex flex-col items-center py-3 gap-1"
+              >
+                <div className="w-4 h-4 rounded bg-[var(--surface2)] animate-pulse" />
+                <div className="h-2 w-6 rounded bg-[var(--surface2)] animate-pulse" />
+              </div>
+            ))}
+          {!loading && !user && (
             <button
               onClick={openLogin}
               className="flex-1 flex flex-col items-center py-3 gap-0.5"

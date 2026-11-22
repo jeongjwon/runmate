@@ -10,6 +10,7 @@ export interface TcxResult {
   name: string // 파일명
   status: 'added' | 'duplicate' | 'error'
   record?: Activity
+  filled?: boolean // 중복이지만 기존 기록에 빠진 정보(경로·심박 등)를 채웠음
   error?: string
 }
 
@@ -161,7 +162,7 @@ export default function TcxImportModal({
                     <span
                       className={`shrink-0 ${s.status === 'error' ? 'text-red-500' : 'text-[var(--text3)]'}`}
                     >
-                      {s.status === 'duplicate' ? '이미 등록된 기록' : s.error}
+                      {s.status === 'duplicate' ? (s.filled ? '이미 등록된 기록 · 빠진 정보 채움' : '이미 등록된 기록') : s.error}
                     </span>
                   </li>
                 ))}

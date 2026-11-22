@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { signOut } from "next-auth/react";
 import { api } from "@/src/lib/api";
-import { User } from "@/src/types";
+import { useMe } from "@/src/lib/useMe";
 import { useUI } from "@/src/context/UIContext";
 import ClaudeConnectModal from "@/src/components/ClaudeConnectModal";
 
@@ -15,6 +15,11 @@ interface Notification {
   body: string;
   isRead: boolean;
   createdAt: string;
+}
+
+interface NotifData {
+  data: Notification[];
+  unreadCount: number;
 }
 
 const NOTIF_ICON: Record<string, string> = {
@@ -47,14 +52,9 @@ export default function TopBar() {
   const profileRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
 
-  const { data: meData } = useQuery<{ user: User | null }>({
-    queryKey: ["me"],
-    queryFn: () => api.get("/me"),
-    staleTime: Infinity,
-  });
-  const user = meData?.user;
+  const { user, loading: meLoading } = useMe();
 
-  const { data: notifData } = useQuery<{ data: Notification[]; unreadCount: number }>({
+  const { data: notifData } = useQuery<NotifData>({
     queryKey: ["notifications"],
     queryFn: () => api.get("/notifications"),
     enabled: !!user,
@@ -71,11 +71,20 @@ export default function TopBar() {
   });
   const thisMonthKm = monthData?.distance ?? 0;
 
+  // 읽음 표시는 화면에 먼저 반영하고 서버에는 뒤따라 저장. 실패하면 서버 상태로 되돌림
   const markReadMut = useMutation({
-    mutationFn: (ids?: number[]) =>
-      api.patch("/notifications", ids ? { ids } : {}),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
+    mutationFn: () => api.patch("/notifications", {}),
+    onError: () => qc.invalidateQueries({ queryKey: ["notifications"] }),
   });
+  const markAllRead = async (dimItems: boolean) => {
+    await qc.cancelQueries({ queryKey: ["notifications"] });
+    qc.setQueryData<NotifData>(["notifications"], (old) =>
+      old && {
+        data: dimItems ? old.data.map((n) => ({ ...n, isRead: true })) : old.data,
+        unreadCount: 0,
+      },
+    );
+  };
 
   const deleteAccountMut = useMutation({
     mutationFn: () => fetch("/api/me", { method: "DELETE" }).then((r) => r.json()),
@@ -93,11 +102,20 @@ export default function TopBar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  // 패널을 열면 배지는 바로 지우되, 어떤 알림이 새것인지는 보는 동안 남겨 두고 닫을 때 지움
   const openNotif = () => {
     setNotifOpen((o) => !o);
     setProfileOpen(false);
-    if (!notifOpen && unreadCount > 0) markReadMut.mutate(undefined);
+    if (!notifOpen && unreadCount > 0) {
+      markAllRead(false);
+      markReadMut.mutate();
+    }
   };
+  const wasNotifOpen = useRef(false);
+  useEffect(() => {
+    if (wasNotifOpen.current && !notifOpen) markAllRead(true);
+    wasNotifOpen.current = notifOpen;
+  }, [notifOpen]);
 
   const openProfile = () => {
     setProfileOpen((o) => !o);
@@ -139,7 +157,10 @@ export default function TopBar() {
                   <p className="text-xs font-bold text-[var(--navy)]">알림</p>
                   {notifications.some((n) => !n.isRead) && (
                     <button
-                      onClick={() => markReadMut.mutate(undefined)}
+                      onClick={() => {
+                        markAllRead(true);
+                        markReadMut.mutate();
+                      }}
                       className="text-[10px] text-[var(--mint)] font-semibold hover:underline"
                     >
                       모두 읽음
@@ -296,7 +317,11 @@ export default function TopBar() {
         <ClaudeConnectModal onClose={() => setClaudeOpen(false)} />
       )}
 
-      {!user && (
+      {meLoading && (
+        <div className="w-7 h-7 rounded-full bg-[var(--surface2)] animate-pulse" />
+      )}
+
+      {!meLoading && !user && (
         <button
           onClick={openLogin}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold text-white transition-colors"

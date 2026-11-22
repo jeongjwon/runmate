@@ -11,7 +11,11 @@ function formatDuration(sec: number): string {
 }
 
 function withFormattedTime(p: any) {
-  return { ...p, finishTime: p.finishTime != null ? formatDuration(p.finishTime) : null }
+  return {
+    ...p,
+    finishTime: p.finishTime != null ? formatDuration(p.finishTime) : null,
+    goalTime:   p.goalTime   != null ? formatDuration(p.goalTime)   : null,
+  }
 }
 
 export async function GET() {

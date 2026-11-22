@@ -734,7 +734,7 @@ export default function ActivityPage() {
     } catch {}
   };
 
-  const { data } = useQuery<{ data: Activity[] }>({
+  const { data, isPending: recordsPending } = useQuery<{ data: Activity[] }>({
     queryKey: ["records"],
     queryFn: () => api.get("/records"),
   });
@@ -807,7 +807,9 @@ export default function ActivityPage() {
   const planFrom = toDateStr(getMonday(new Date(cal.y, cal.m - 1, 1)));
   const planTo = addDays(toDateStr(getMonday(new Date(cal.y, cal.m, 0))), 6);
   const plansKey = ["plans", planFrom, planTo];
-  const { data: planData } = useQuery<{ data: TrainingPlan[] }>({
+  const { data: planData, isPending: plansPending } = useQuery<{
+    data: TrainingPlan[];
+  }>({
     queryKey: plansKey,
     queryFn: () => api.get(`/plans?from=${planFrom}&to=${planTo}`),
     staleTime: 0,
@@ -876,14 +878,16 @@ export default function ActivityPage() {
       fd.append("tcx", file);
       fd.append("route_type", "road");
       try {
-        const res = await api.upload<{ data: Activity; duplicate?: boolean }>(
-          "/records/import/tcx",
-          fd,
-        );
+        const res = await api.upload<{
+          data: Activity;
+          duplicate?: boolean;
+          filled?: string[];
+        }>("/records/import/tcx", fd);
         results.push({
           name: file.name,
           status: res.duplicate ? "duplicate" : "added",
           record: res.data,
+          filled: !!res.filled?.length,
         });
       } catch (err: any) {
         results.push({
@@ -899,6 +903,8 @@ export default function ActivityPage() {
     const added = results.filter((r) => r.status === "added").length;
     const dup = results.filter((r) => r.status === "duplicate").length;
     const failed = results.filter((r) => r.status === "error");
+    // 이미 있던 기록에 경로·심박 같은 빠진 정보가 채워진 경우
+    const filled = results.filter((r) => r.filled).length;
     if (added > 0) {
       // 추가된 기록이 있으면 결과 모달에서 훈련 종류를 바로 고름
       reload();
@@ -909,6 +915,14 @@ export default function ActivityPage() {
           ? failed[0].error!
           : `TCX 실패 ${failed.length}개${dup ? ` · 중복 ${dup}개 건너뜀` : ""}`,
         "error",
+      );
+    } else if (filled > 0) {
+      reload();
+      showSnackbar(
+        files.length === 1
+          ? "이미 등록된 기록에 빠진 정보를 채웠습니다"
+          : `모두 이미 등록된 기록입니다 (${filled}개는 빠진 정보를 채움)`,
+        "info",
       );
     } else {
       showSnackbar(
@@ -947,6 +961,15 @@ export default function ActivityPage() {
   const barColors = chartData.data.map((v) =>
     v === maxDist && v > 0 ? "#00c896" : "rgba(0,200,150,0.2)",
   );
+
+  // 불러오는 동안 '기록 없음' 화면이 먼저 보이지 않도록 함
+  if (recordsPending || plansPending) {
+    return (
+      <div className="text-center py-24 text-[var(--text3)]">
+        <i className="fas fa-spinner fa-spin text-2xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

@@ -18,6 +18,9 @@ function ShoeModal({
 }) {
   const { showSnackbar, showConfirm } = useUI()
   const [name, setName] = useState(shoe?.name ?? '')
+  const [brand, setBrand] = useState(shoe?.brand ?? '')
+  const [model, setModel] = useState(shoe?.model ?? '')
+  const [purpose, setPurpose] = useState(shoe?.purpose ?? '')
   const [startKm, setStartKm] = useState<string>(shoe?.startKm ? String(shoe.startKm) : '')
   const [retired, setRetired] = useState(shoe?.retired ?? false)
   const [saving, setSaving] = useState(false)
@@ -26,7 +29,7 @@ function ShoeModal({
     if (!name.trim()) return showSnackbar('신발 이름을 입력해주세요', 'error')
     setSaving(true)
     try {
-      const body = { name, start_km: Number(startKm) || 0, retired }
+      const body = { name, brand, model, purpose, start_km: Number(startKm) || 0, retired }
       if (shoe) await api.put(`/shoes/${shoe.id}`, body)
       else await api.post('/shoes', body)
       onSaved()
@@ -64,7 +67,7 @@ function ShoeModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-[var(--surface)] w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl shadow-2xl"
+        className="bg-[var(--surface)] w-full sm:max-w-sm sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] overflow-y-auto"
       >
         <div className="px-5 py-4 flex justify-between items-center border-b border-[var(--border)]">
           <h2 className="text-base font-extrabold text-[var(--navy)]">{shoe ? '신발 수정' : '신발 추가'}</h2>
@@ -84,6 +87,38 @@ function ShoeModal({
               onChange={(e) => setName(e.target.value)}
               maxLength={40}
               placeholder="예: 데일리 트레이너"
+              className="input-dark w-full"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">브랜드</label>
+              <input
+                value={brand}
+                onChange={(e) => setBrand(e.target.value)}
+                maxLength={40}
+                placeholder="예: 아식스"
+                className="input-dark w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">모델</label>
+              <input
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                maxLength={40}
+                placeholder="예: 노바블라스트 5"
+                className="input-dark w-full"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1.5 text-[var(--text2)]">용도</label>
+            <input
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              maxLength={60}
+              placeholder="예: 이지런·롱런"
               className="input-dark w-full"
             />
           </div>
@@ -170,6 +205,7 @@ export default function ShoesCard({ shoes, onChanged }: { shoes: Shoe[]; onChang
           {sorted.map((s) => {
             const near = !s.retired && s.km / SHOE_LIMIT_KM >= 0.8
             const pct = Math.min(100, Math.round((s.km / SHOE_LIMIT_KM) * 100))
+            const detail = [[s.brand, s.model].filter(Boolean).join(' '), s.purpose].filter(Boolean).join(' · ')
             return (
               <li key={s.id} className={`flex flex-col gap-1.5 ${s.retired ? 'opacity-55' : ''}`}>
                 <div className="flex items-baseline justify-between gap-2">
@@ -198,6 +234,7 @@ export default function ShoesCard({ shoes, onChanged }: { shoes: Shoe[]; onChang
                     <span className="ml-0.5 text-[11.5px] font-normal text-[var(--text2)]">km · {s.runs}회</span>
                   </span>
                 </div>
+                {detail && <p className="-mt-1 truncate text-[11.5px] text-[var(--text2)]">{detail}</p>}
                 <div
                   role="img"
                   aria-label={`${s.name} 누적 ${s.km.toFixed(1)}km, 교체 기준 ${SHOE_LIMIT_KM}km`}

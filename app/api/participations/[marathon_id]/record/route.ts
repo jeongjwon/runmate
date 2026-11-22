@@ -19,7 +19,11 @@ function parseDuration(str: string): number | null {
 }
 
 function withFormattedTime(p: any) {
-  return { ...p, finishTime: p.finishTime != null ? formatDuration(p.finishTime) : null }
+  return {
+    ...p,
+    finishTime: p.finishTime != null ? formatDuration(p.finishTime) : null,
+    goalTime:   p.goalTime   != null ? formatDuration(p.goalTime)   : null,
+  }
 }
 
 export async function PUT(
@@ -33,7 +37,7 @@ export async function PUT(
 
   const userId    = session.user.id
   const marathonId = Number(params.marathon_id)
-  const { category, finish_time, race_notes, certificate_url } = await req.json().catch(() => ({}))
+  const { category, finish_time, goal_time, race_notes, certificate_url } = await req.json().catch(() => ({}))
 
   const p = await prisma.marathonParticipation.findFirst({
     where: { userId, marathonId, deletedAt: null },
@@ -42,13 +46,17 @@ export async function PUT(
     return NextResponse.json({ error: '참가 신청을 찾을 수 없습니다' }, { status: 404 })
   }
 
-  const finishTimeSec = finish_time ? parseDuration(finish_time) : undefined
+  // 완주·목표 기록은 빈 문자열을 보내면 지우고, 항목을 안 보내거나 형식이 틀리면 그대로 둠
+  const toSec = (v: unknown) => (v === '' ? null : typeof v === 'string' ? (parseDuration(v) ?? undefined) : undefined)
+  const finishTimeSec = toSec(finish_time)
+  const goalTimeSec   = toSec(goal_time)
 
   const updated = await prisma.marathonParticipation.update({
     where: { id: p.id },
     data: {
       ...(category !== undefined ? { category } : {}),
       ...(finishTimeSec !== undefined ? { finishTime: finishTimeSec } : {}),
+      ...(goalTimeSec   !== undefined ? { goalTime:   goalTimeSec }   : {}),
       ...(race_notes !== undefined ? { raceNotes: race_notes } : {}),
       ...(certificate_url !== undefined ? { certificateUrl: certificate_url } : {}),
     },

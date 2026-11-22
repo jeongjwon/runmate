@@ -25,6 +25,7 @@ model User {
   shoes          Shoe[]
   trainingPlans  TrainingPlan[]
   mcpGrants      McpGrant[]
+  customMarathons Marathon[]
   @@unique([provider, providerId])
   @@map("users")
 }
@@ -43,7 +44,10 @@ model Marathon {
   entryFee        Int      @default(0) @map("entry_fee")
   maxParticipants Int      @default(0) @map("max_participants")
   isActive        Boolean  @default(true) @map("is_active")
+  createdBy       Int?     @map("created_by") // 직접 추가한 사용자. 크롤링한 대회는 null, 값이 있으면 그 사용자에게만 보임
   participations MarathonParticipation[]
+  creator        User?    @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  @@index([createdBy])
   @@map("marathons")
 }
 
@@ -56,6 +60,7 @@ model MarathonParticipation {
   marathonId     Int       @map("marathon_id")
   category       String    @default("")
   finishTime     Int?      @map("finish_time")
+  goalTime       Int?      @map("goal_time") // 목표 기록(초)
   raceNotes      String?   @map("race_notes")
   certificateUrl String?   @map("certificate_url")
   user    User    @relation(fields: [userId], references: [id])
@@ -72,7 +77,9 @@ model Activity {
   userId      Int?      @map("user_id")
   date        String
   distance    Float
-  duration    Int
+  duration    Int       // 이동 시간(초). 정지 시간 제외, 페이스 계산 기준
+  elapsed     Int?      // 총 경과 시간(초). 정지 시간 포함. 모르면 null
+  externalId  String?   @map("external_id") // 워치 활동 고유 ID (TCX 의 Activity/Id). 중복 판정에 가장 먼저 씀
   pace        String    @default("")
   paceSeconds Int       @default(0) @map("pace_seconds")
   heartRate   Int       @default(0) @map("heart_rate")
@@ -92,6 +99,7 @@ model Activity {
   @@index([userId, paceSeconds])
   @@index([userId, date])
   @@index([shoeId])
+  @@unique([userId, externalId])
   @@map("activities")
 }
 
@@ -101,6 +109,9 @@ model Shoe {
   updatedAt  DateTime   @updatedAt @map("updated_at")
   userId     Int        @map("user_id")
   name       String
+  brand      String     @default("")
+  model      String     @default("")
+  purpose    String     @default("") // 용도 메모. 예: "이지런·롱런"
   startKm    Float      @default(0) @map("start_km") // 등록 전에 이미 달린 거리
   retiredAt  DateTime?  @map("retired_at")
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)

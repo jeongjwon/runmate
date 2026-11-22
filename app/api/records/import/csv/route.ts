@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth/next'
 import { authOptions } from '@/src/lib/auth'
 import prisma from '@/src/lib/prisma'
+import { kstToday } from '@/src/lib/plans'
 
 // "h:mm:ss" / "m:ss" / 순수 숫자(초) 형식을 모두 초 단위 정수로 변환
 function parseDuration(s: string): number {
@@ -50,10 +51,6 @@ function dateFromFilename(name: string): string | null {
   const m = name.match(/(\d{4})(\d{2})(\d{2})\d{6}/)
   if (m) return `${m[1]}-${m[2]}-${m[3]}`
   return null
-}
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10)
 }
 
 // POST /api/records/import/csv
@@ -123,7 +120,7 @@ export async function POST(req: NextRequest) {
     const heartRate = iAvgHR >= 0 ? parseInt(cols[iAvgHR] ?? '') || 0 : 0
     const calories  = iCal   >= 0 ? parseInt(cols[iCal]   ?? '') || 0 : 0
     // 날짜는 파일명에서 추출, 실패 시 오늘 날짜로 폴백
-    const date = dateFromFilename(filename) ?? todayStr()
+    const date = dateFromFilename(filename) ?? kstToday()
 
     if (isNaN(distance) || distance <= 0)
       return NextResponse.json({ error: '유효하지 않은 거리' }, { status: 422 })

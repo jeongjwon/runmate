@@ -20,6 +20,9 @@ users
 marathons
   └── marathon_participations (1:N)
 
+users
+  └── marathons               (1:N, marathons.created_by — 직접 추가한 대회만. 크롤링한 대회는 NULL)
+
 shoes
   └── activities              (1:N, activities.shoe_id — 신발을 지우면 NULL)
 
@@ -51,7 +54,8 @@ badge_definitions
 
 ### `marathons`
 
-roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
+roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록과, 사용자가 직접 추가한 대회입니다.  
+직접 추가한 대회(`created_by`에 값이 있음)는 추가한 사용자에게만 보이고, 크롤러가 건드리지 않습니다.
 
 | 컬럼 | 타입 | 설명 |
 |------|------|------|
@@ -68,6 +72,9 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 | `entry_fee` | `int` | 참가비 (원) |
 | `max_participants` | `int` | 최대 참가 인원 (0=무제한) |
 | `is_active` | `bool` | 접수 중 여부 |
+| `created_by` | `int?` FK → users | 직접 추가한 사용자 (`ON DELETE CASCADE`). 크롤링한 대회는 NULL |
+
+**인덱스**: `(created_by)` — 내가 추가한 대회 조회
 
 ---
 
@@ -85,6 +92,7 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 | `marathon_id` | `int` FK → marathons | 대상 대회 |
 | `category` | `text` | 신청 종목 (5K / 10K / Half / Full) |
 | `finish_time` | `int?` | 완주 시간 (초 단위) |
+| `goal_time` | `int?` | 목표 기록 (초 단위) |
 | `race_notes` | `text?` | 완주 메모 |
 | `certificate_url` | `text?` | 기록증 이미지 URL (Supabase Storage) |
 
@@ -106,7 +114,9 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 | `user_id` | `int?` FK → users | 기록 소유자 |
 | `date` | `text` | 러닝 날짜 (YYYY-MM-DD) |
 | `distance` | `float` | 거리 (km) |
-| `duration` | `int` | 소요 시간 (초) |
+| `duration` | `int` | 이동 시간 (초). 정지 시간 제외, 페이스 계산 기준 |
+| `elapsed` | `int?` | 총 경과 시간 (초). 정지 시간 포함, 모르면 NULL |
+| `external_id` | `text?` | 워치 활동 고유 ID (TCX의 `Activity/Id`, 예: `2026-10-03T00:03:06Z`). 중복 판정에 가장 먼저 씀 |
 | `pace` | `text` | 평균 페이스 문자열 (예: `6'01"`) |
 | `pace_seconds` | `int` | 페이스 (초/km) — 인덱스 기반 최고기록 조회용 |
 | `heart_rate` | `int` | 평균 심박수 (bpm) |
@@ -119,6 +129,11 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 | `marathon_id` | `int?` | 연관 마라톤 ID |
 | `shoe_id` | `int?` FK → shoes | 신은 신발. 신발을 삭제하면 NULL (`ON DELETE SET NULL`) |
 | `route_data` | `text` | GPS 경로 JSON (`[[lat, lng], ...]`) |
+
+**유니크 제약**: `(user_id, external_id)` — 같은 워치 활동을 두 번 저장하지 않음. NULL은 여러 개 허용되므로 `external_id`가 없는 기록에는 영향이 없습니다.  
+기록을 지울 때(soft delete)는 `external_id`를 NULL로 비워, 같은 활동을 나중에 다시 가져올 수 있게 합니다 (`src/lib/runs.ts`의 `deletedRun`).
+
+**시간 기준**: 2026-11-22 이전에 저장된 기록의 `duration`에는 이동 시간과 총 경과 시간이 섞여 있고 `elapsed`는 NULL입니다. 자동으로 구분할 수 없어 그대로 두었습니다.
 
 **인덱스**:
 - `(user_id, distance)` — 최장 거리 최고기록 조회
@@ -140,6 +155,9 @@ roadrun.co.kr에서 크롤링한 국내 마라톤 대회 목록입니다.
 | `updated_at` | `timestamptz` | 수정 시각 |
 | `user_id` | `int` FK → users | 소유자 (`ON DELETE CASCADE`) |
 | `name` | `text` | 신발 이름 (최대 40자) |
+| `brand` | `text` | 브랜드 (기본값 빈 문자열) |
+| `model` | `text` | 모델명 (기본값 빈 문자열) |
+| `purpose` | `text` | 용도 메모 (예: `이지런·롱런`, 기본값 빈 문자열) |
 | `start_km` | `float` | RunMate에 등록하기 전에 이미 달린 거리 (km, 기본값 0) |
 | `retired_at` | `timestamptz?` | 은퇴 시각. 값이 있으면 기록 폼의 신발 선택에서 숨김 |
 
@@ -275,6 +293,8 @@ npm run db:seed
 # 강제 초기화 (개발 환경, 데이터 삭제됨)
 npx prisma db push --force-reset
 ```
+
+유니크 제약을 새로 추가하면 `db push`가 `--accept-data-loss`를 요구하며 멈춥니다. 이 플래그는 쓰지 말고, 바뀔 SQL을 먼저 확인한 뒤 그 SQL만 실행합니다 (`database/MIGRATIONS.md` Phase 7 참고).
 
 ## 연결 설정
 

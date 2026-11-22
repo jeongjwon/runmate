@@ -18,6 +18,7 @@ export interface Marathon {
   entryFee: number
   maxParticipants: number
   isActive: boolean
+  createdBy?: number | null // 직접 추가한 대회면 추가한 사용자 id
 }
 
 export interface Participation {
@@ -26,6 +27,7 @@ export interface Participation {
   marathonId: number
   category: string
   finishTime?: string
+  goalTime?: string // 목표 기록 "H:MM:SS"
   raceNotes?: string
   certificateUrl?: string
   marathon: Marathon
@@ -36,7 +38,9 @@ export interface Activity {
   id: number
   date: string
   distance: number
-  duration: number
+  duration: number // 이동 시간(초). 정지 시간 제외
+  elapsed?: number | null // 총 경과 시간(초). 모르면 null
+  externalId?: string | null // 워치 활동 고유 ID (TCX 의 Activity/Id)
   duration_formatted: string
   pace: string
   heartRate: number
@@ -53,6 +57,9 @@ export interface Activity {
 export interface Shoe {
   id: number
   name: string
+  brand: string
+  model: string
+  purpose: string // 용도 메모
   startKm: number
   retired: boolean
   km: number // startKm + 이 신발로 저장한 기록의 거리 합

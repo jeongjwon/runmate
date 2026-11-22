@@ -1,33 +1,80 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Line, Doughnut } from "react-chartjs-2";
+import { Chart, Line, Doughnut } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
+  BarController,
+  LineController,
   Filler,
   ArcElement,
   Tooltip,
 } from "chart.js";
 import { api } from "@/src/lib/api";
-import { Activity } from "@/src/types";
-import { calcPace, formatDuration } from "@/src/lib/utils";
+import { Activity, Participation, TrainingPlan } from "@/src/types";
+import {
+  addDays,
+  calcPace,
+  formatDuration,
+  getMonday,
+  toDateStr,
+} from "@/src/lib/utils";
+import {
+  PB_EVENTS,
+  STAT_PERIODS,
+  StatPeriod,
+  bestPaceRun,
+  distancePBs,
+  periodRange,
+  runsBetween,
+  totalsOf,
+  weeklyStats,
+} from "@/src/lib/stats";
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
+  BarController,
+  LineController,
   Filler,
   ArcElement,
   Tooltip,
 );
 
 const DONUT_COLORS = ["#00c896", "#1b2d40", "#3b82f6", "#f59e0b"];
+const WEEKS = 12; // 주간 거리 차트에 보이는 주 수
+
+const UP_COLOR = "#00c896";
+const DOWN_COLOR = "#f59e0b";
+
+const md = (date: string) =>
+  `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
+
+// 증감 표시용 시간. "1시간 5분" · "12분"
+function roughDuration(sec: number): string {
+  const min = Math.round(sec / 60);
+  const h = Math.floor(min / 60);
+  return h > 0 ? `${h}시간 ${min % 60}분` : `${min}분`;
+}
+
+interface Delta {
+  text: string;
+  good: boolean | null; // null = 변동 없음
+}
+
+function signed(diff: number, text: string): Delta {
+  if (diff === 0) return { text: "변동 없음", good: null };
+  return { text: `${diff > 0 ? "+" : "−"}${text}`, good: diff > 0 };
+}
 
 // ── 배지 상수 ──────────────────────────────────────────────
 const BADGE_META: Record<string, { color: string; bg: string }> = {
@@ -59,7 +106,7 @@ function buildHeatmap(activities: Activity[]) {
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  // 오늘 기준으로 일요일이 오른쪽 끝이 되도록 정렬
+  // 이번 주 토요일이 오른쪽 끝이 되도록 정렬 (한 열 = 일요일 ~ 토요일)
   const dow = today.getDay(); // 0=일
   const endSunday = new Date(today);
   endSunday.setDate(today.getDate() + (6 - dow));
@@ -75,7 +122,8 @@ function buildHeatmap(activities: Activity[]) {
   for (let i = 0; i < totalDays; i++) {
     const d = new Date(startDay);
     d.setDate(startDay.getDate() + i);
-    const dateStr = d.toISOString().split("T")[0];
+    // toISOString() 은 UTC 기준이라 한국 시간에서는 하루 전 날짜가 나옴
+    const dateStr = toDateStr(d);
     week.push({ date: dateStr, dist: distMap[dateStr] ?? 0 });
     if (week.length === 7) {
       weeks.push(week);
@@ -144,18 +192,78 @@ export default function StatsPage() {
   });
   const pbs = pbData?.data;
 
+  const [period, setPeriod] = useState<StatPeriod>("month");
+  const today = useMemo(() => toDateStr(new Date()), []);
+
+  // 주간 차트 범위: 11주 전 월요일 ~ 이번 주 일요일
+  const thisMonday = toDateStr(getMonday(new Date(today + "T00:00:00")));
+  const planFrom = addDays(thisMonday, -7 * (WEEKS - 1));
+  const planTo = addDays(thisMonday, 6);
+  const { data: planData } = useQuery<{ data: TrainingPlan[] }>({
+    queryKey: ["plans", planFrom, planTo],
+    queryFn: () => api.get(`/plans?from=${planFrom}&to=${planTo}`),
+  });
+  const plans = planData?.data ?? [];
+
+  const { data: partData } = useQuery<{ data: Participation[] }>({
+    queryKey: ["participations"],
+    queryFn: () => api.get("/participations"),
+  });
+  const participations = partData?.data ?? [];
+
+  // 선택한 기간의 합계와, 직전 기간 같은 시점까지의 합계
+  const periodStats = useMemo(() => {
+    const range = periodRange(period, today);
+    const runs =
+      period === "all"
+        ? activities
+        : runsBetween(activities, range.from, range.to);
+    const cur = totalsOf(runs);
+    const prev = range.prev
+      ? totalsOf(runsBetween(activities, range.prev.from, range.prev.to))
+      : null;
+    return { range, runs, cur, prev };
+  }, [activities, period, today]);
+
   const summary = useMemo(() => {
-    const totalDist = activities.reduce((s, r) => s + r.distance, 0);
-    const totalSec = activities.reduce((s, r) => s + r.duration, 0);
+    const { cur } = periodStats;
     return {
-      totalDist,
-      totalTime: formatDuration(totalSec),
-      count: activities.length,
-      avgPace: calcPace(totalDist, totalSec),
+      totalDist: cur.dist,
+      totalTime: formatDuration(cur.sec),
+      count: cur.count,
+      avgPace: calcPace(cur.dist, cur.sec),
     };
-  }, [activities]);
+  }, [periodStats]);
+
+  // 요약 박스 순서(거리 · 횟수 · 페이스 · 시간)에 맞춘 증감. 비교할 기록이 없으면 null
+  const deltas = useMemo<(Delta | null)[] | null>(() => {
+    const { cur, prev } = periodStats;
+    if (!prev || prev.count === 0) return null;
+    const dist = Math.round((cur.dist - prev.dist) * 10) / 10;
+    const count = cur.count - prev.count;
+    const sec = Math.round((cur.sec - prev.sec) / 60) * 60;
+    // 페이스는 줄어드는 쪽이 좋아진 것
+    const pace =
+      cur.paceSec !== null && prev.paceSec !== null
+        ? Math.round(cur.paceSec - prev.paceSec)
+        : null;
+    return [
+      signed(dist, `${Math.abs(dist).toFixed(1)}km`),
+      signed(count, `${Math.abs(count)}회`),
+      pace === null
+        ? null
+        : pace === 0
+          ? { text: "변동 없음", good: null }
+          : {
+              text: `${Math.abs(pace)}초 ${pace < 0 ? "빠름" : "느림"}`,
+              good: pace < 0,
+            },
+      signed(sec, roughDuration(Math.abs(sec))),
+    ];
+  }, [periodStats]);
 
   const distRanges = useMemo(() => {
+    const runs = periodStats.runs;
     const ranges = [
       { label: "5km 미만", min: 0, max: 5 },
       { label: "5-10km", min: 5, max: 10 },
@@ -164,15 +272,30 @@ export default function StatsPage() {
     ];
     const counts = ranges.map(
       (r) =>
-        activities.filter((a) => a.distance >= r.min && a.distance < r.max)
-          .length,
+        runs.filter((a) => a.distance >= r.min && a.distance < r.max).length,
     );
-    const total = activities.length;
+    const total = runs.length;
     const pcts = counts.map((c) =>
       total > 0 ? Math.round((c / total) * 100) : 0,
     );
     return { labels: ranges.map((r) => r.label), counts, pcts };
-  }, [activities]);
+  }, [periodStats]);
+
+  const weeks = useMemo(
+    () => weeklyStats(activities, plans, today, WEEKS),
+    [activities, plans, today],
+  );
+  const hasPlans = weeks.some((w) => w.planned > 0);
+  const thisWeekDist = weeks[weeks.length - 1]?.dist ?? 0;
+  const last4Avg =
+    weeks.slice(-5, -1).reduce((s, w) => s + w.dist, 0) /
+    Math.max(1, weeks.slice(-5, -1).length);
+
+  const eventPBs = useMemo(
+    () => distancePBs(activities, participations),
+    [activities, participations],
+  );
+  const bestPace = useMemo(() => bestPaceRun(activities), [activities]);
 
   const dualYearChart = useMemo(() => {
     const now = new Date();
@@ -279,38 +402,262 @@ export default function StatsPage() {
         </p>
       </div>
 
-      {/* Tabs */}
-      {/* <div className="flex gap-0.5 p-0.5 rounded-xl bg-[var(--surface2)] w-fit">
-        {(["전체", "거리", "페이스", "시간"] as StatTab[]).map((t) => (
-          <button key={t} onClick={() => setActiveTab(t)} className={`act-tab ${activeTab === t ? "active" : ""}`}>{t}</button>
-        ))}
-      </div> */}
+      {/* 기간 선택: 요약과 거리 분포에 적용 */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <div className="flex gap-0.5 p-0.5 rounded-xl bg-[var(--surface2)] w-fit">
+          {STAT_PERIODS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPeriod(p.key)}
+              className={`act-tab ${period === p.key ? "active" : ""}`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-[var(--text3)]">
+          {periodStats.range.from
+            ? `${md(periodStats.range.from)} ~ ${md(periodStats.range.to)}`
+            : "전체 기간"}
+        </span>
+      </div>
 
       {/* Summary boxes */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-        {[
-          { label: "총 거리", value: summary.totalDist.toFixed(1), unit: "km" },
-          { label: "러닝 횟수", value: String(summary.count), unit: "회" },
-          { label: "평균 페이스", value: summary.avgPace, unit: "/km" },
-          { label: "총 시간", value: summary.totalTime, unit: "" },
-        ].map(({ label, value, unit }) => (
-          <div
-            key={label}
-            className="bg-white border border-[var(--border)] rounded-xl px-4 py-3"
-          >
-            <p className="text-[0.6rem] font-semibold text-[var(--text3)] uppercase tracking-widest mb-1.5">
-              {label}
-            </p>
-            <p className="text-lg font-black text-[var(--navy)] leading-none tracking-tight">
-              {value}
-              {unit && (
-                <span className="text-xs font-normal text-[var(--text3)] ml-0.5">
-                  {unit}
-                </span>
-              )}
-            </p>
+      <div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {[
+            {
+              label: "총 거리",
+              value: summary.totalDist.toFixed(1),
+              unit: "km",
+            },
+            { label: "러닝 횟수", value: String(summary.count), unit: "회" },
+            { label: "평균 페이스", value: summary.avgPace, unit: "/km" },
+            { label: "총 시간", value: summary.totalTime, unit: "" },
+          ].map(({ label, value, unit }, i) => {
+            const delta = deltas?.[i];
+            return (
+              <div
+                key={label}
+                className="bg-white border border-[var(--border)] rounded-xl px-4 py-3"
+              >
+                <p className="text-[0.6rem] font-semibold text-[var(--text3)] uppercase tracking-widest mb-1.5">
+                  {label}
+                </p>
+                <p className="text-lg font-black text-[var(--navy)] leading-none tracking-tight">
+                  {value}
+                  {unit && (
+                    <span className="text-xs font-normal text-[var(--text3)] ml-0.5">
+                      {unit}
+                    </span>
+                  )}
+                </p>
+                {delta && (
+                  <p
+                    className="text-[10px] font-bold mt-1.5"
+                    style={{
+                      color:
+                        delta.good === null
+                          ? "var(--text3)"
+                          : delta.good
+                            ? UP_COLOR
+                            : DOWN_COLOR,
+                    }}
+                  >
+                    {delta.text}
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {periodStats.range.prev && (
+          <p className="text-[10px] text-[var(--text3)] mt-1.5">
+            {deltas
+              ? `증감은 ${periodStats.range.prevLabel}(${md(periodStats.range.prev.from)} ~ ${md(periodStats.range.prev.to)})와 비교한 값입니다`
+              : `${periodStats.range.prevLabel}(${md(periodStats.range.prev.from)} ~ ${md(periodStats.range.prev.to)})는 기록이 없어 증감을 표시하지 않습니다`}
+          </p>
+        )}
+      </div>
+
+      {/* ── 주간 거리 · 계획 달성률 ── */}
+      <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
+        <div className="flex flex-wrap items-center justify-between gap-y-2 mb-1">
+          <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider">
+            주간 거리
+          </h2>
+          <div className="flex items-center gap-3 text-[0.65rem] text-[var(--text3)]">
+            <span className="flex items-center gap-1">
+              <span
+                className="inline-block w-2 h-2 rounded-sm"
+                style={{ background: "#00c896" }}
+              />
+              거리
+            </span>
+            {hasPlans && (
+              <span className="flex items-center gap-1">
+                <span
+                  className="inline-block w-3 h-0.5 rounded"
+                  style={{ background: "#3b82f6" }}
+                />
+                계획 달성률
+              </span>
+            )}
           </div>
-        ))}
+        </div>
+        <p className="text-xs text-[var(--text3)] mb-4">
+          이번 주{" "}
+          <span className="font-bold text-[var(--navy)]">
+            {thisWeekDist.toFixed(1)} km
+          </span>{" "}
+          · 직전 4주 평균 {last4Avg.toFixed(1)} km
+        </p>
+        <div style={{ height: 180 }}>
+          <Chart
+            type="bar"
+            data={{
+              labels: weeks.map((w) => w.label),
+              datasets: [
+                {
+                  type: "bar" as const,
+                  label: "거리",
+                  data: weeks.map((w) => w.dist),
+                  backgroundColor: weeks.map((w) =>
+                    w.current ? "#1b2d40" : "#00c896",
+                  ),
+                  borderRadius: 4,
+                  maxBarThickness: 28,
+                  yAxisID: "y",
+                  order: 1,
+                },
+                ...(hasPlans
+                  ? [
+                      {
+                        type: "line" as const,
+                        label: "계획 달성률",
+                        data: weeks.map((w) => w.rate),
+                        borderColor: "#3b82f6",
+                        backgroundColor: "#3b82f6",
+                        borderWidth: 2,
+                        tension: 0.3,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        pointBackgroundColor: "#3b82f6",
+                        pointBorderColor: "#fff",
+                        pointBorderWidth: 2,
+                        spanGaps: false,
+                        yAxisID: "y1",
+                        order: 0,
+                      },
+                    ]
+                  : []),
+              ],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              interaction: { mode: "index", intersect: false },
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  ...tooltipBase,
+                  callbacks: {
+                    title: (items) => {
+                      const w = weeks[items[0]?.dataIndex ?? 0];
+                      return w ? `${md(w.from)} ~ ${md(w.to)}` : "";
+                    },
+                    label: (ctx) => {
+                      const w = weeks[ctx.dataIndex];
+                      if (ctx.dataset.yAxisID === "y1") {
+                        return `계획 ${w.done}/${w.planned} 완료 (${w.rate}%)`;
+                      }
+                      return `${w.dist.toFixed(1)} km · ${w.count}회`;
+                    },
+                  },
+                },
+              },
+              scales: {
+                x: lineScales.x,
+                y: {
+                  ...lineScales.y,
+                  ticks: {
+                    ...lineScales.y.ticks,
+                    callback: (v: any) => `${v}km`,
+                  },
+                },
+                y1: {
+                  display: hasPlans,
+                  position: "right",
+                  min: 0,
+                  max: 100,
+                  grid: { drawOnChartArea: false },
+                  border: { display: false },
+                  ticks: {
+                    color: "#9aaab8",
+                    font: { size: 10 },
+                    stepSize: 50,
+                    callback: (v: any) => `${v}%`,
+                  },
+                },
+              },
+            }}
+          />
+        </div>
+        <p className="text-[10px] text-[var(--text3)] mt-3">
+          {hasPlans
+            ? "한 주는 월요일 ~ 일요일입니다. 달성률은 휴식을 뺀 훈련 계획 중 완료로 표시한 비율이고, 이번 주는 오늘까지의 계획만 셉니다."
+            : "한 주는 월요일 ~ 일요일입니다. 활동 탭에서 훈련 계획을 세우면 주간 달성률이 함께 표시됩니다."}
+        </p>
+      </div>
+
+      {/* ── 종목별 최고 기록 ── */}
+      <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
+        <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider mb-4">
+          종목별 최고 기록
+        </h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          {PB_EVENTS.map((ev) => {
+            const pb = eventPBs[ev.key];
+            return (
+              <div
+                key={ev.key}
+                className="rounded-xl px-4 py-3 bg-[var(--surface2)] min-w-0"
+              >
+                <p className="text-[0.6rem] font-semibold text-[var(--text3)] uppercase tracking-widest mb-1.5">
+                  {ev.label}
+                </p>
+                <p
+                  className={`text-lg font-black leading-none tracking-tight ${pb ? "text-[var(--navy)]" : "text-[var(--text3)]"}`}
+                >
+                  {pb ? formatDuration(Math.round(pb.seconds)) : "—"}
+                </p>
+                {pb ? (
+                  <>
+                    <p className="text-[10px] text-[var(--text2)] mt-1.5">
+                      {calcPace(pb.distance, pb.seconds)}/km · {pb.date}
+                    </p>
+                    <p
+                      className="text-[10px] text-[var(--text3)] truncate"
+                      title={pb.source === "race" ? pb.name : undefined}
+                    >
+                      {pb.source === "race"
+                        ? `대회 · ${pb.name}`
+                        : `러닝 기록 · ${pb.distance.toFixed(2)}km`}
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-[10px] text-[var(--text3)] mt-1.5">
+                    기록 없음
+                  </p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-[var(--text3)] mt-3">
+          내 마라톤에 입력한 완주 기록과, 거리가 종목 거리의 −2% ~ +5% 안에
+          드는 러닝 기록 중 가장 빠른 것입니다.
+        </p>
       </div>
 
       {/* ── 활동 히트맵 ── */}
@@ -420,10 +767,22 @@ export default function StatsPage() {
       <div className="grid lg:grid-cols-2 gap-4">
         {/* 거리 분포 donut */}
         <div className="bg-white border border-[var(--border)] rounded-2xl p-5">
-          <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider mb-4">
-            거리 분포
-          </h2>
-          <div className="flex flex-col lg:flex-row items-center gap-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xs font-extrabold text-[var(--text2)] uppercase tracking-wider">
+              거리 분포
+            </h2>
+            <span className="text-[0.65rem] text-[var(--text3)]">
+              {STAT_PERIODS.find((p) => p.key === period)?.label}
+            </span>
+          </div>
+          {periodStats.runs.length === 0 && (
+            <p className="text-xs text-[var(--text3)] py-10 text-center">
+              이 기간에는 기록이 없습니다
+            </p>
+          )}
+          <div
+            className={`flex-col lg:flex-row items-center gap-5 ${periodStats.runs.length === 0 ? "hidden" : "flex"}`}
+          >
             <div
               className="relative shrink-0"
               style={{ width: 120, height: 120 }}
@@ -679,13 +1038,14 @@ export default function StatsPage() {
                   : "",
               },
               {
-                label: "최고 페이스",
+                // 1km 전력 질주 같은 짧은 기록이 뽑히지 않도록 5km 이상만 봄
+                label: "최고 페이스 (5km 이상)",
                 icon: "fa-bolt",
-                record: pbs?.bestPace,
-                value: pbs?.bestPace?.pace ?? "—",
-                sub: pbs?.bestPace
-                  ? `${pbs.bestPace.distance.toFixed(1)}km`
-                  : "",
+                record: bestPace,
+                value: bestPace
+                  ? calcPace(bestPace.distance, bestPace.duration)
+                  : "—",
+                sub: bestPace ? `${bestPace.distance.toFixed(1)}km` : "",
               },
               {
                 label: "최장 시간",

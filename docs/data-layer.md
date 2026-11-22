@@ -123,20 +123,23 @@ export const api = {
 
 | 메서드 | 경로 | 설명 | 인증 |
 |--------|------|------|------|
-| GET | `/api/marathons` | 마라톤 목록 (city·category 필터, 빈 DB 시 자동 크롤링) | 선택 |
-| POST | `/api/marathons/sync` | roadrun.co.kr 크롤링 동기화 | 불필요 |
-| GET | `/api/marathons/[id]` | 마라톤 상세 | 불필요 |
+| GET | `/api/marathons` | 마라톤 목록 (city·category 필터, 빈 DB 시 자동 크롤링). 크롤링한 대회 + 내가 직접 추가한 대회만 | 선택 |
+| POST | `/api/marathons` | 대회 직접 추가 (`name`, `date`, `category`, `location`, `official_url`). 본인에게만 보이고 내 마라톤에 바로 들어감. 같은 날짜·이름이 이미 있으면 409 | 필수 |
+| POST | `/api/marathons/sync` | roadrun.co.kr 크롤링 동기화 (직접 추가한 대회는 건드리지 않음) | 불필요 |
+| GET | `/api/marathons/[id]` | 마라톤 상세 (다른 사용자가 직접 추가한 대회는 404) | 불필요 |
+| PUT | `/api/marathons/[id]` | 직접 추가한 대회 수정 (본인만) | 필수 |
+| DELETE | `/api/marathons/[id]` | 직접 추가한 대회 삭제 (본인만, 참가 정보·완주 기록도 함께 삭제) | 필수 |
 | GET | `/api/participations` | 내 참가 목록 | 필수 |
 | POST | `/api/participations/[marathon_id]` | 참가 신청 | 필수 |
-| DELETE | `/api/participations/[marathon_id]` | 참가 취소 | 필수 |
-| PUT | `/api/participations/[marathon_id]/record` | 완주 기록 저장 | 필수 |
+| DELETE | `/api/participations/[marathon_id]` | 참가 취소. 경로의 값은 항상 대회 id (참가 id 아님) | 필수 |
+| PUT | `/api/participations/[marathon_id]/record` | 완주 기록 · 목표 기록(`goal_time`) 저장 | 필수 |
 | GET | `/api/records` | 활동 기록 목록 | 필수 |
 | POST | `/api/records` | 활동 기록 추가 + 배지 auto-sync (`shoe_id`로 신발 지정) | 필수 |
 | PUT | `/api/records/[id]` | 활동 기록 수정 + 배지 auto-sync (날짜·거리가 바뀔 때만). `shoe_id: null`이면 신발 해제 | 필수 |
 | DELETE | `/api/records/[id]` | 활동 기록 삭제 + 배지 auto-sync | 필수 |
 | POST | `/api/records/import/csv` | CSV 임포트 (Garmin split / 범용) | 필수 |
-| POST | `/api/records/import/tcx` | TCX 임포트 (GPS 경로·최고 심박 포함, 중복이면 건너뜀) | 필수 |
-| GET | `/api/stats` | 기간별 통계 (`weekly/monthly/yearly`) | 필수 |
+| POST | `/api/records/import/tcx` | TCX 임포트 (GPS 경로·최고 심박·`external_id`·총 경과 시간 포함. 중복이면 새로 만들지 않고 빠진 정보만 채움) | 필수 |
+| GET | `/api/stats` | 기간별 통계 (`weekly/monthly/yearly`, 주·월 경계는 한국 날짜 기준) | 필수 |
 | GET | `/api/stats/personal-bests` | 최고기록 3종 (거리·시간·페이스) | 필수 |
 | GET | `/api/stats/this-month` | 이번 달 러닝 거리 합계 (km) | 필수 |
 | GET | `/api/badges` | 배지 목록 조회 + 월간 km 배지 sync | 필수 |
@@ -146,8 +149,8 @@ export const api = {
 | PUT | `/api/plans/[date]` | 해당 날짜 계획 저장·덮어쓰기 (`kind`, `title`, `detail`) 또는 완료 표시 (`done`) | 필수 |
 | DELETE | `/api/plans/[date]` | 해당 날짜 계획 삭제 | 필수 |
 | GET | `/api/shoes` | 신발 목록 + 누적 거리·달린 횟수 | 필수 |
-| POST | `/api/shoes` | 신발 추가 (`name`, `start_km`) | 필수 |
-| PUT | `/api/shoes/[id]` | 신발 수정 (이름·시작 거리·은퇴) | 필수 |
+| POST | `/api/shoes` | 신발 추가 (`name`, `start_km`, `brand`, `model`, `purpose`). 같은 이름이 있으면 409 | 필수 |
+| PUT | `/api/shoes/[id]` | 신발 수정 (이름·브랜드·모델·용도·시작 거리·은퇴) | 필수 |
 | DELETE | `/api/shoes/[id]` | 신발 삭제 (기록은 남고 `shoe_id`만 NULL) | 필수 |
 | GET | `/api/me` | 내 프로필 | 필수 |
 | DELETE | `/api/me` | 회원 탈퇴 (사용자 데이터 전체 삭제) | 필수 |
@@ -191,12 +194,27 @@ const { data: notifData } = useQuery({
   refetchInterval: 5 * 60 * 1000,  // 5분 폴링
 })
 
-// 패널 열 때 전체 읽음 처리
+// 읽음 처리: 캐시를 먼저 바꾸고 서버에는 뒤따라 저장 (실패하면 다시 조회해 되돌림)
 const markReadMut = useMutation({
-  mutationFn: (ids?: number[]) => api.patch('/notifications', ids ? { ids } : {}),
-  onSuccess: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  mutationFn: () => api.patch('/notifications', {}),
+  onError: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
 })
 ```
+
+- 패널을 열면 배지(미읽음 수)는 즉시 0이 되고, 어떤 알림이 새것인지 알 수 있도록 목록의 강조는 패널을 보는 동안 남깁니다.
+- "모두 읽음"을 누르거나 패널을 닫으면 강조도 즉시 지웁니다. 서버 응답을 기다리지 않습니다.
+
+## 로그인 상태 (useMe)
+
+`src/lib/useMe.ts`의 `useMe()`가 `GET /api/me` 결과를 `{ user, loading }`으로 돌려줍니다. `Nav`, `TopBar`, `MarathonsPage`가 함께 씁니다.
+
+```ts
+const { user, loading } = useMe()
+if (loading) { /* 자리 표시(skeleton) — 로그인/비로그인 화면 어느 쪽도 그리지 않음 */ }
+```
+
+새로고침 직후 `/api/me` 응답 전에는 로그인 여부를 알 수 없으므로, 그동안 비로그인 화면(로그인 버튼)을 먼저 그리지 않고 자리 표시만 보여 줍니다.  
+활동 페이지도 기록·계획을 처음 불러오는 동안에는 빈 화면 대신 로딩 표시를 보여 줍니다.
 
 ## 회원 탈퇴
 
@@ -248,6 +266,62 @@ km = start_km + (해당 신발로 달린 activities.distance 합계, soft delete
 기록을 추가·수정·삭제하면 클라이언트가 `["shoes"]` 쿼리도 함께 무효화합니다.  
 다른 사용자의 신발 id를 `shoe_id`로 보내면 `resolveShoeId`가 걸러 400을 돌려줍니다.
 
+## 통계 페이지 (Stats)
+
+화면의 숫자는 대부분 브라우저에서 계산합니다. `["records"]` · `["plans", from, to]` · `["participations"]` 쿼리 결과를 `src/lib/stats.ts`의 순수 함수에 넘깁니다. 통계 전용 API는 `GET /api/stats/personal-bests`(최장 거리 · 최장 시간)만 씁니다.
+
+**기간 선택** (`periodRange`) — 요약 박스와 거리 분포에 적용됩니다. 기본값은 이번 달입니다.
+
+| 기간 | 범위 | 증감 비교 대상 |
+|------|------|----------------|
+| 이번 주 | 이번 주 월요일 ~ 오늘 | 지난주 월요일 ~ 지난주 같은 요일 |
+| 이번 달 | 1일 ~ 오늘 | 지난달 1일 ~ 같은 날 (그 달에 없는 날이면 말일) |
+| 올해 | 1월 1일 ~ 오늘 | 작년 1월 1일 ~ 같은 날 |
+| 전체 | 모든 기록 | 없음 |
+
+직전 기간 전체가 아니라 같은 시점까지와 비교합니다. 진행 중인 기간을 끝난 기간과 비교하면 항상 적게 나오기 때문입니다. 비교 대상 기간에 기록이 없으면 증감을 표시하지 않습니다.
+
+**주간 거리** (`weeklyStats`) — 최근 12주(월 ~ 일)의 거리 합계와 훈련 계획 달성률입니다.
+
+```
+달성률 = 완료로 표시한 계획 수 / 계획 수   (휴식(rest) 계획은 제외, 이번 주는 오늘까지의 계획만)
+```
+
+계획이 없는 주는 달성률이 `null`이고 차트에 점을 찍지 않습니다.
+
+**종목별 최고 기록** (`distancePBs`) — 5K · 10K · 하프 · 풀 각각 아래 둘 중 가장 빠른 기록입니다.
+
+1. 내 마라톤의 완주 기록 (`category`가 `5K` · `10K` · `Half` · `Full`이고 `finishTime`이 있는 것)
+2. 거리가 종목 거리의 −2% ~ +5% 안에 드는 러닝 기록 (GPS 오차 감안. 5K는 4.90 ~ 5.25km, 하프는 20.68 ~ 22.15km)
+
+**최고 페이스** (`bestPaceRun`) — 5km 이상 달린 기록만 봅니다. `personal-bests` API의 `bestPace`는 거리 제한이 없어 화면에서 쓰지 않습니다.
+
+## 러닝 기록 중복 판정과 시간 기준
+
+판정 로직은 `src/lib/runs.ts`에 있고, MCP 도구(`add_run` · `import_runs`)와 TCX 임포트가 같이 씁니다.
+
+1. `external_id`(워치 활동 고유 ID)가 같으면 같은 기록
+2. 날짜가 같고 거리 차이가 100m 이내면 같은 기록  
+   단, 양쪽 모두 `external_id`가 있는데 서로 다르면 다른 기록으로 봅니다 (같은 날 같은 코스를 두 번 뛴 경우).
+
+시간은 판정에 쓰지 않습니다. 같은 활동이라도 이동 시간과 총 경과 시간이 섞여 들어와 몇 초씩 어긋나기 때문입니다.
+
+| 컬럼 | 뜻 |
+|------|----|
+| `duration` | 이동 시간. 정지 시간 제외, 페이스 계산 기준 (TCX에서는 Lap `TotalTimeSeconds` 합계) |
+| `elapsed` | 총 경과 시간. 정지 시간 포함, 모르면 NULL (TCX에서는 시작 시각 ~ 마지막 Trackpoint) |
+
+- 기록을 지우면(soft delete) `external_id`도 함께 비웁니다. 유니크 제약 `(user_id, external_id)`에 걸리지 않고 같은 활동을 다시 가져올 수 있습니다.
+- `POST /api/records`(화면에서 직접 추가)와 CSV 임포트에는 중복 검사가 없습니다.
+
+## 날짜 기준
+
+날짜는 모두 한국 시간의 `YYYY-MM-DD` 문자열입니다.
+
+- **서버**(Vercel은 UTC): "오늘"은 `src/lib/plans.ts`의 `kstToday()`로 구하고, 날짜 계산은 `shiftDate` · `mondayOf`를 씁니다.
+- **브라우저**: `Date`를 문자열로 바꿀 때는 `src/lib/utils.ts`의 `toDateStr()`(로컬 날짜)을 씁니다.
+- `toISOString()`은 UTC 기준이라 한국 시간 00:00 ~ 09:00에는 전날 날짜가 나오고, `new Date("YYYY-MM-DD")`는 UTC 자정으로 해석되어 하루가 밀립니다. 날짜를 구할 때 쓰지 않습니다.
+
 ## Claude 연동 (MCP)
 
 `POST /api/mcp`는 상태 없는(stateless) JSON-RPC 엔드포인트입니다. 세션을 만들지 않고 요청마다 JSON으로 응답하며, GET·DELETE는 405입니다.  
@@ -255,13 +329,26 @@ km = start_km + (해당 신발로 달린 activities.distance 합계, soft delete
 
 | 도구 | 동작 | 종류 |
 |------|------|------|
-| `get_overview` | 오늘 날짜, 이번 주 계획·거리, 최근 8주 주간 거리, 다가오는 대회, 신발 누적 거리 | 읽기 |
+| `get_overview` | 오늘 날짜, 이번 주 계획·거리, 최근 8주 주간 거리, 다가오는 대회, 신발 누적 거리·은퇴 여부 | 읽기 |
 | `list_runs` | 기간 안의 러닝 기록 (기본 최근 30일) | 읽기 |
-| `add_run` | 러닝 기록 1건 추가 (같은 날짜·거리·시간이면 새로 만들지 않음) | 쓰기 |
+| `add_run` | 러닝 기록 1건 추가 (같은 날짜에 거리 차이가 100m 이내인 기록이 있으면 새로 만들지 않음) | 쓰기 |
+| `update_run` | 기록 1건 수정 (`id` 또는 `date`로 지정, 보낸 항목만 변경). 신발·훈련 종류·`external_id`·`elapsed`를 나중에 채울 때 사용 | 쓰기 |
+| `import_runs` | 기록 대량 등록 (한 번에 최대 200건). 중복이면 건너뛰거나 빠진 정보만 채우고, `overwrite: true`면 보낸 값으로 덮어씀. 추가·갱신·건너뜀·실패 건수와 항목별 이유를 돌려줌 | 쓰기 |
+| `merge_runs` | 중복 기록 2건 합치기 (`keep_id`, `remove_id`, 같은 날짜만). 남기는 기록의 빈 항목을 지우는 기록의 값으로 채우고 지우는 기록은 삭제 | 쓰기 |
+| `delete_run` | 기록 1건 삭제 (soft delete) | 쓰기 |
 | `list_plans` | 기간 안의 훈련 계획 (기본 이번 주 월요일 ~ 다음 주 일요일) | 읽기 |
 | `save_plans` | 계획 여러 날 저장 (한 번에 최대 62일, 같은 날짜는 덮어쓰기. 저장 전에 전부 검사해 하나라도 잘못되면 아무것도 저장하지 않음) | 쓰기 |
 | `set_plan_done` | 계획 완료 여부 변경 | 쓰기 |
 | `delete_plan` | 계획 삭제 | 쓰기 |
+| `list_shoes` | 신발 전체 (브랜드·모델·용도, 누적 거리, 달린 횟수, 은퇴 여부) | 읽기 |
+| `add_shoe` | 신발 등록 (같은 이름이 있으면 보낸 항목만 갱신). 등록 즉시 `add_run` · `update_run`의 `shoe`에 사용 가능 | 쓰기 |
+| `retire_shoe` | 신발 은퇴 처리 / 되돌리기 | 쓰기 |
+| `list_races` | 참가 대회 목록 (완주 기록·목표 기록 포함) | 읽기 |
+| `add_race` | 참가 대회 저장 (대회 목록에 같은 날짜·이름이 있으면 연결, 없으면 본인에게만 보이는 대회로 생성. 이미 저장한 대회면 보낸 항목만 갱신) | 쓰기 |
+
+도구는 모두 16개이고 `serverInfo.version`은 `1.1.0`입니다. 도구를 추가·변경해 배포한 뒤에는 Claude에서 커넥터를 다시 연결해야 새 목록이 보입니다.  
+기록을 돌려주는 도구(`list_runs`, `add_run`, `update_run` 등)의 기록 항목에는 `elapsed`와 `external_id`가 함께 들어 있습니다.  
+`import_runs`는 한 번에 200건까지 처리하므로 `/api/mcp`의 `maxDuration`을 60초로 두었습니다.
 
 모든 도구는 토큰에서 얻은 `userId`로만 조회·저장하므로 다른 사용자의 데이터에는 접근할 수 없습니다.
 
@@ -300,5 +387,6 @@ const publicUrl = supabase.storage.from('certificates').getPublicUrl(path).data.
 `routeData` 컬럼에 `[[lat, lng], ...]` JSON 문자열로 저장하며, 활동 상세 드로어에서 Leaflet 지도로 시각화합니다.
 
 - **최고 심박**: `Trackpoint`의 `HeartRateBpm` 최댓값을 `max_heart_rate`에 저장합니다. Trackpoint에 심박이 없으면 `Lap`의 `MaximumHeartRateBpm`을 사용합니다.
-- **중복 방지**: 같은 사용자에게 날짜·시간(초)이 같고 거리가 ±0.005km 안인 기록이 이미 있으면 저장하지 않고 `200 { duplicate: true, data: 기존 기록 }`을 돌려줍니다. 새로 저장하면 `201`입니다.
+- **활동 ID · 시간**: `Activity/Id`를 `external_id`로 저장합니다. `duration`은 Lap `TotalTimeSeconds` 합계(이동 시간), `elapsed`는 시작 시각부터 마지막 Trackpoint까지(총 경과 시간)입니다.
+- **중복 방지**: [중복 판정](#러닝-기록-중복-판정과-시간-기준)에 걸리는 기록이 이미 있으면 새로 만들지 않고 `200 { duplicate: true, data: 기존 기록, filled: [...] }`을 돌려줍니다. 이때 기존 기록에 비어 있던 항목(`external_id`, `elapsed`, 평균·최고 심박, 칼로리, GPS 경로)만 채우며, 이미 있는 값은 바꾸지 않습니다. 새로 저장하면 `201`입니다.
 - **여러 파일**: 요청 1번에 파일 1개만 받습니다. 활동 페이지에서 파일을 여러 개 고르면 클라이언트가 파일마다 순서대로 요청하고, 끝나면 결과 모달(`TcxImportModal`)에서 추가된 기록의 훈련 종류(`run_type`)와 신발(`shoe_id`)을 바로 고를 수 있습니다.

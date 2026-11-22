@@ -19,7 +19,8 @@ export async function crawlAndSync(): Promise<{ added: number; updated: number; 
   let added = 0, updated = 0
 
   for (const m of marathons) {
-    const existing = await prisma.marathon.findFirst({ where: { name: m.name } })
+    // 사용자가 직접 추가한 대회(createdBy 있음)는 이름이 같아도 건드리지 않음
+    const existing = await prisma.marathon.findFirst({ where: { name: m.name, createdBy: null } })
     if (existing) {
       await prisma.marathon.update({
         where: { id: existing.id },
@@ -180,7 +181,7 @@ const CITY_RULES: [string, string][] = [
   ['광주','경기도'],
 ]
 
-function extractCity(location: string): string {
+export function extractCity(location: string): string {
   for (const [kw, city] of CITY_RULES) {
     if (location.includes(kw)) return city
   }

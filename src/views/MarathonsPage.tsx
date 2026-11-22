@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSession } from "next-auth/react";
+import { useMe } from "@/src/lib/useMe";
 import { api } from "@/src/lib/api";
+import { toDateStr } from "@/src/lib/utils";
 import { Marathon } from "@/src/types";
 import { useUI } from "@/src/context/UIContext";
+import RaceFormModal from "@/src/components/RaceFormModal";
 
 interface MarathonsResponse {
   data: Marathon[];
@@ -21,6 +23,7 @@ const CITIES = [
   "광주",
   "대전",
   "울산",
+  "세종",
   "경기도",
   "강원도",
   "충청북도",
@@ -31,6 +34,8 @@ const CITIES = [
   "경상남도",
   "제주도",
 ];
+// DB 에는 "강원특별자치도" · "제주특별자치도"로 저장되어 있어 화면 이름 그대로는 걸리지 않음
+const CITY_QUERY: Record<string, string> = { 강원도: "강원", 제주도: "제주" };
 const CATS = ["전체", "5K", "10K", "Half", "Full"];
 const MONTHS = ["전체", "1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"];
 const PAGE_SIZE = 12;
@@ -38,20 +43,22 @@ const PAGE_SIZE = 12;
 export default function MarathonsPage() {
   const qc = useQueryClient();
   const { showSnackbar, showConfirm, openLogin } = useUI();
-  const { data: session } = useSession();
+  const { user, loading: meLoading } = useMe();
   const [city, setCity] = useState("전체");
   const [cat, setCat] = useState("전체");
   const [month, setMonth] = useState(0);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  // 대회 직접 추가(new) 또는 직접 추가한 대회 수정
+  const [raceForm, setRaceForm] = useState<{ marathon?: Marathon; name?: string } | null>(null);
 
-  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
+  const today = useMemo(() => toDateStr(new Date()), []);
 
   const { data, isLoading } = useQuery<MarathonsResponse>({
     queryKey: ["marathons", city, cat],
     queryFn: () => {
       const p = new URLSearchParams();
-      if (city !== "전체") p.set("city", city);
+      if (city !== "전체") p.set("city", CITY_QUERY[city] ?? city);
       if (cat !== "전체") p.set("category", cat);
       return api.get(`/marathons?${p}`);
     },
@@ -135,7 +142,8 @@ export default function MarathonsPage() {
   });
 
   const toggle = (m: Marathon) => {
-    if (!session) {
+    if (meLoading) return;
+    if (!user) {
       showConfirm(
         "로그인이 필요합니다",
         "내 마라톤에 추가하려면 로그인해야 합니다.",
@@ -155,14 +163,36 @@ export default function MarathonsPage() {
     }
   };
 
+  const openRaceForm = (name?: string) => {
+    if (meLoading) return;
+    if (!user) {
+      showConfirm(
+        "로그인이 필요합니다",
+        "대회를 직접 추가하려면 로그인해야 합니다.",
+        () => openLogin(),
+        { confirmLabel: "로그인하기", variant: "primary" },
+      );
+      return;
+    }
+    setRaceForm({ name });
+  };
+
   return (
     <div className="space-y-4">
       {/* 헤더 */}
-      <div>
-        <h1 className="text-xl font-bold text-[var(--navy)]">마라톤 일정</h1>
-        <p className="text-xs text-[var(--text3)] mt-0.5">
-          국내 마라톤 일정을 확인하고 참가 신청하세요
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-[var(--navy)]">마라톤 일정</h1>
+          <p className="text-xs text-[var(--text3)] mt-0.5">
+            국내 마라톤 일정을 확인하고 참가 신청하세요
+          </p>
+        </div>
+        <button
+          onClick={() => openRaceForm()}
+          className="btn-outline shrink-0 text-xs py-1.5 px-3 whitespace-nowrap"
+        >
+          <i className="fas fa-plus text-[10px]" /> 대회 직접 추가
+        </button>
       </div>
 
       {/* 카운트 배너 */}
@@ -248,6 +278,16 @@ export default function MarathonsPage() {
           <p className="font-semibold text-sm text-[var(--text2)]">
             조건에 맞는 대회가 없습니다
           </p>
+          <p className="text-xs text-[var(--text3)] mt-1.5 mb-4">
+            찾는 대회가 목록에 없다면 직접 추가해서 내 마라톤에 담을 수 있어요
+          </p>
+          <button
+            onClick={() => openRaceForm(search.trim() || undefined)}
+            className="btn-mint text-xs py-2 px-4"
+          >
+            <i className="fas fa-plus text-[10px] mr-1.5" />
+            {search.trim() ? `‘${search.trim()}’ 직접 추가` : "대회 직접 추가"}
+          </button>
         </div>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -273,8 +313,19 @@ export default function MarathonsPage() {
                 <div className="px-4 pt-4 pb-3">
                   {/* 상단: 상태 + 하트 */}
                   <div className="flex items-center justify-between mb-2.5">
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusClass}`}>
-                      {statusLabel}
+                    <span className="flex items-center gap-1.5">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusClass}`}>
+                        {statusLabel}
+                      </span>
+                      {m.createdBy && (
+                        <button
+                          onClick={() => setRaceForm({ marathon: m })}
+                          title="직접 추가한 대회 수정"
+                          className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--surface2)] text-[var(--text2)] hover:text-[var(--navy)] transition-colors"
+                        >
+                          직접 추가 <i className="fas fa-pen text-[8px] ml-0.5" />
+                        </button>
+                      )}
                     </span>
                     <button
                       onClick={() => toggle(m)}
@@ -343,6 +394,18 @@ export default function MarathonsPage() {
       {/* 페이지네이션 */}
       {!isLoading && totalPages > 1 && (
         <Pagination page={page} totalPages={totalPages} onChange={setPage} />
+      )}
+
+      {raceForm && (
+        <RaceFormModal
+          marathon={raceForm.marathon}
+          initialName={raceForm.name}
+          onClose={() => setRaceForm(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["marathons"] });
+            qc.invalidateQueries({ queryKey: ["participations"] });
+          }}
+        />
       )}
     </div>
   );

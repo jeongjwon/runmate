@@ -21,7 +21,8 @@ export async function POST(
   if (!user) return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })
 
   const marathon = await prisma.marathon.findUnique({ where: { id: marathonId } })
-  if (!marathon) {
+  // 다른 사용자가 직접 추가한 대회는 없는 대회로 취급
+  if (!marathon || (marathon.createdBy && marathon.createdBy !== userId)) {
     return NextResponse.json({ error: '대회를 찾을 수 없습니다' }, { status: 404 })
   }
 
@@ -48,18 +49,13 @@ export async function DELETE(
     return NextResponse.json({ error: '로그인이 필요합니다' }, { status: 401 })
   }
 
-  const userId = session.user.id
-  const idParam = Number(params.marathon_id)
+  const userId     = session.user.id
+  const marathonId = Number(params.marathon_id)
 
-  // Try by participation id first, then by marathonId
-  let p = await prisma.marathonParticipation.findFirst({
-    where: { id: idParam, userId, deletedAt: null },
+  // 대회 id 로만 찾는다. 참가 id 와 섞어 찾으면 숫자가 겹칠 때 다른 대회가 지워짐
+  const p = await prisma.marathonParticipation.findFirst({
+    where: { userId, marathonId, deletedAt: null },
   })
-  if (!p) {
-    p = await prisma.marathonParticipation.findFirst({
-      where: { userId, marathonId: idParam, deletedAt: null },
-    })
-  }
   if (!p) {
     return NextResponse.json({ error: '참가 신청을 찾을 수 없습니다' }, { status: 404 })
   }

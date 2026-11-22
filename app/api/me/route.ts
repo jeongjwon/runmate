@@ -34,6 +34,7 @@ export async function DELETE() {
     await tx.trainingPlan.deleteMany({ where: { userId } })
     await tx.mcpGrant.deleteMany({ where: { userId } })
     await tx.marathonParticipation.deleteMany({ where: { userId } })
+    await tx.marathon.deleteMany({ where: { createdBy: userId } })
     await tx.user.delete({ where: { id: userId } })
   })
 

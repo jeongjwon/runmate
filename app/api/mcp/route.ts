@@ -6,13 +6,17 @@ import { TOOLS, ToolError, callTool, hasTool } from '@/src/lib/mcpTools'
 // 요청 하나에 JSON 응답 하나만 돌려주며, 서버가 먼저 보내는 메시지(SSE 스트림)는 쓰지 않는다.
 
 export const dynamic = 'force-dynamic'
+export const maxDuration = 60 // import_runs 는 한 번에 200건까지 처리
 
 const PROTOCOL_VERSIONS = ['2025-11-25', '2025-06-18', '2025-03-26', '2024-11-05']
 
 const INSTRUCTIONS =
   'RunMate는 사용자의 러닝 기록, 주간 훈련 계획, 신발, 참가 대회를 관리하는 서비스입니다. ' +
   '날짜는 모두 한국 시간 기준 YYYY-MM-DD 입니다. 훈련 계획을 짜거나 수정하기 전에 get_overview 로 오늘 날짜와 최근 훈련량, 다가오는 대회를 확인하고, ' +
-  '확정된 계획은 save_plans 로 저장하면 RunMate 활동 캘린더에 바로 표시됩니다.'
+  '확정된 계획은 save_plans 로 저장하면 RunMate 활동 캘린더에 바로 표시됩니다. ' +
+  '신발은 add_shoe 로 등록한 뒤 add_run · update_run 의 shoe 에 이름으로 붙이고, 참가 대회와 목표·완주 기록은 add_race 로 저장합니다. ' +
+  '기록의 duration 은 정지 시간을 뺀 이동 시간이고 elapsed 는 총 경과 시간입니다. 워치·앱에서 내보낸 기록 여러 건은 import_runs 로 한 번에 넣으세요. ' +
+  'external_id(워치 활동 ID)가 같거나 같은 날짜에 거리가 100m 이내면 같은 기록으로 보고 새로 만들지 않습니다. 이미 생긴 중복은 merge_runs 로 합칩니다.'
 
 type Json = Record<string, any>
 
@@ -35,7 +39,7 @@ async function handle(msg: any, userId: number): Promise<Json | null> {
       return rpcResult(id, {
         protocolVersion: PROTOCOL_VERSIONS.includes(wanted) ? wanted : PROTOCOL_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: 'runmate', title: 'RunMate', version: '1.0.0' },
+        serverInfo: { name: 'runmate', title: 'RunMate', version: '1.1.0' },
         instructions: INSTRUCTIONS,
       })
     }
